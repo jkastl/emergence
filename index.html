@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A Field Guide to Emergence</title>
+<meta name="description" content="Five small machines that surprise their makers: interactive simulations of complexity arising from simple rules.">
+<style>
+  :root {
+    --bg: #0b0e14;
+    --panel: #10141d;
+    --panel-edge: #1d2433;
+    --ink: #d9dee8;
+    --ink-dim: #8b93a5;
+    --ink-faint: #5a6274;
+    --amber: #e8b45a;
+    --cyan: #6fd3c7;
+    --rose: #e07a8b;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.65;
+    font-size: 17px;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: rgba(232,180,90,.35); }
+
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 24px; }
+
+  /* ---------- header ---------- */
+  header {
+    padding: 96px 0 72px;
+    text-align: center;
+    background:
+      radial-gradient(ellipse 60% 50% at 50% -10%, rgba(111,211,199,.10), transparent),
+      radial-gradient(ellipse 50% 40% at 80% 10%, rgba(232,180,90,.06), transparent);
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--amber);
+  }
+  h1 {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: clamp(38px, 7vw, 64px);
+    letter-spacing: -.01em;
+    margin: 18px 0 22px;
+    line-height: 1.12;
+  }
+  .lede {
+    max-width: 620px;
+    margin: 0 auto;
+    color: var(--ink-dim);
+    font-size: 18px;
+  }
+  .lede em { color: var(--ink); font-style: normal; border-bottom: 1px solid var(--amber); }
+
+  nav.toc {
+    margin-top: 44px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+  }
+  nav.toc a {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--ink-dim);
+    text-decoration: none;
+    border: 1px solid var(--panel-edge);
+    border-radius: 999px;
+    padding: 7px 15px;
+    transition: color .15s, border-color .15s;
+  }
+  nav.toc a:hover { color: var(--cyan); border-color: var(--cyan); }
+  nav.toc a .n { color: var(--amber); margin-right: 6px; }
+
+  /* ---------- exhibits ---------- */
+  section.exhibit { padding: 64px 0; border-top: 1px solid var(--panel-edge); }
+  .ex-head { display: flex; align-items: baseline; gap: 16px; margin-bottom: 8px; }
+  .ex-num {
+    font-family: var(--mono);
+    color: var(--amber);
+    font-size: 14px;
+    letter-spacing: .1em;
+  }
+  h2 {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: clamp(26px, 4vw, 34px);
+    letter-spacing: -.01em;
+  }
+  .ex-sub {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--ink-faint);
+    margin-bottom: 22px;
+  }
+  .prose { color: var(--ink-dim); max-width: 660px; margin-bottom: 26px; }
+  .prose p + p { margin-top: 12px; }
+  .prose strong { color: var(--ink); font-weight: 600; }
+  .prose .rule-tag {
+    font-family: var(--mono);
+    font-size: .85em;
+    color: var(--cyan);
+    background: rgba(111,211,199,.08);
+    border: 1px solid rgba(111,211,199,.2);
+    border-radius: 4px;
+    padding: 1px 6px;
+    white-space: nowrap;
+  }
+
+  .stage {
+    background: var(--panel);
+    border: 1px solid var(--panel-edge);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .stage canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+    cursor: crosshair;
+    touch-action: none;
+  }
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px 22px;
+    padding: 14px 18px;
+    border-top: 1px solid var(--panel-edge);
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--ink-dim);
+  }
+  .controls label { display: flex; align-items: center; gap: 9px; white-space: nowrap; }
+  .controls .val { color: var(--cyan); min-width: 3.2em; display: inline-block; }
+  .controls .hint { color: var(--ink-faint); margin-left: auto; }
+
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    width: 120px; height: 3px;
+    background: var(--panel-edge);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 13px; height: 13px; border-radius: 50%;
+    background: var(--amber);
+    border: 2px solid var(--bg);
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 11px; height: 11px; border-radius: 50%;
+    background: var(--amber);
+    border: 2px solid var(--bg);
+  }
+  button, select {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--ink);
+    background: transparent;
+    border: 1px solid var(--panel-edge);
+    border-radius: 6px;
+    padding: 5px 13px;
+    cursor: pointer;
+    transition: border-color .15s, color .15s;
+  }
+  button:hover, select:hover { border-color: var(--amber); color: var(--amber); }
+  select { background: var(--panel); }
+
+  /* ---------- footer ---------- */
+  footer {
+    border-top: 1px solid var(--panel-edge);
+    padding: 56px 0 80px;
+    color: var(--ink-faint);
+    font-size: 14.5px;
+  }
+  footer .colophon { max-width: 620px; }
+  footer a { color: var(--ink-dim); }
+  footer .glyph {
+    font-family: var(--serif);
+    font-size: 26px;
+    color: var(--amber);
+    margin-bottom: 14px;
+  }
+
+  @media (max-width: 640px) {
+    body { font-size: 16px; }
+    header { padding: 64px 0 48px; }
+    section.exhibit { padding: 48px 0; }
+    .controls .hint { margin-left: 0; width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="eyebrow">Five small machines</div>
+    <h1>A Field Guide<br>to Emergence</h1>
+    <p class="lede">
+      None of the systems below contains a picture of its result. Each is a
+      handful of arithmetic applied over and over — yet flocks form, spots grow,
+      spirals bloom, and chaos blossoms. The pattern lives <em>between</em> the rules,
+      not inside them. Everything here runs live; poke at it.
+    </p>
+    <nav class="toc">
+      <a href="#automaton"><span class="n">I</span>The Automaton</a>
+      <a href="#flock"><span class="n">II</span>The Flock</a>
+      <a href="#chemistry"><span class="n">III</span>The Chemistry</a>
+      <a href="#sunflower"><span class="n">IV</span>The Sunflower</a>
+      <a href="#pendulum"><span class="n">V</span>The Pendulum</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ============ I. ELEMENTARY CELLULAR AUTOMATON ============ -->
+<section class="exhibit" id="automaton">
+  <div class="wrap">
+    <div class="ex-head"><span class="ex-num">I.</span><h2>The Automaton</h2></div>
+    <div class="ex-sub">one dimension is enough &middot; Wolfram, 1983</div>
+    <div class="prose">
+      <p>
+        A row of cells, each on or off. Every tick, a cell looks at itself and its
+        two neighbors — eight possible situations — and a <strong>rule</strong> is just a table
+        saying what to do in each one. That's 256 possible universes, numbered 0 to 255.
+      </p>
+      <p>
+        Most are boring. A few are not. <span class="rule-tag">Rule 30</span> is so
+        unpredictable it was used as a random number generator.
+        <span class="rule-tag">Rule 110</span> can, in principle, compute anything your
+        laptop can. All from a lookup table with eight entries.
+      </p>
+    </div>
+    <div class="stage">
+      <canvas id="ca-canvas" width="880" height="440"></canvas>
+      <div class="controls">
+        <label>rule <input type="range" id="ca-rule" min="0" max="255" value="30" step="1"> <span class="val" id="ca-rule-val">30</span></label>
+        <button id="ca-seed">single seed</button>
+        <button id="ca-random">random seed</button>
+        <span class="hint">try 30, 90, 110, 184, 73</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ II. BOIDS ============ -->
+<section class="exhibit" id="flock">
+  <div class="wrap">
+    <div class="ex-head"><span class="ex-num">II.</span><h2>The Flock</h2></div>
+    <div class="ex-sub">no bird is in charge &middot; Reynolds, 1986</div>
+    <div class="prose">
+      <p>
+        A starling murmuration has no choreographer. Each bird follows three
+        private urges: <span class="rule-tag">separate</span> — don't crowd your neighbors;
+        <span class="rule-tag">align</span> — fly the way they're flying;
+        <span class="rule-tag">cohere</span> — drift toward their center.
+      </p>
+      <p>
+        No bird knows the shape of the flock. The flock is what the rules look
+        like from far away. Move your cursor into the pen — you're a hawk.
+      </p>
+    </div>
+    <div class="stage">
+      <canvas id="boids-canvas" width="880" height="480"></canvas>
+      <div class="controls">
+        <label>separate <input type="range" id="b-sep" min="0" max="200" value="100"></label>
+        <label>align <input type="range" id="b-ali" min="0" max="200" value="100"></label>
+        <label>cohere <input type="range" id="b-coh" min="0" max="200" value="100"></label>
+        <span class="hint">cursor = predator &middot; try cohere at max</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ III. REACTION–DIFFUSION ============ -->
+<section class="exhibit" id="chemistry">
+  <div class="wrap">
+    <div class="ex-head"><span class="ex-num">III.</span><h2>The Chemistry</h2></div>
+    <div class="ex-sub">how the leopard gets its spots &middot; Turing, 1952</div>
+    <div class="prose">
+      <p>
+        Alan Turing's last great idea: two invisible chemicals spreading through
+        tissue — one feeding the reaction, one starving it — can paint spots,
+        stripes, and labyrinths onto skin. No gene stores the leopard's pattern;
+        the genes only tune two numbers, <strong>feed</strong> and <strong>kill</strong>, and the
+        mathematics does the rest.
+      </p>
+      <p>
+        This is the Gray–Scott model, running live. Draw on it with your cursor
+        to inject chemical, and watch the pattern negotiate the intrusion.
+      </p>
+    </div>
+    <div class="stage">
+      <canvas id="rd-canvas" width="880" height="520"></canvas>
+      <div class="controls">
+        <label>regime
+          <select id="rd-preset">
+            <option value="0.0545,0.0620" selected>coral</option>
+            <option value="0.0367,0.0649">mitosis</option>
+            <option value="0.0780,0.0610">worms</option>
+            <option value="0.0290,0.0570">solitons</option>
+            <option value="0.0620,0.0609">labyrinth</option>
+          </select>
+        </label>
+        <button id="rd-reset">reseed</button>
+        <span class="hint">drag to paint chemical B</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ IV. PHYLLOTAXIS ============ -->
+<section class="exhibit" id="sunflower">
+  <div class="wrap">
+    <div class="ex-head"><span class="ex-num">IV.</span><h2>The Sunflower</h2></div>
+    <div class="ex-sub">the most irrational number in nature &middot; 137.508&deg;</div>
+    <div class="prose">
+      <p>
+        A sunflower places each new seed at a fixed angle from the last, a little
+        further out. That's the whole algorithm. But the choice of angle is
+        everything: pick a rational fraction of a turn and the seeds line up in
+        wasteful spokes. The plant needs an angle that <strong>never repeats</strong> —
+        and the hardest number to approximate with fractions is the golden ratio.
+      </p>
+      <p>
+        Its angle is 137.508…°. Drag the slider even a tenth of a degree away
+        and watch the packing fall apart into spirals and spokes. Evolution found
+        a theorem in number theory and grew it in a field.
+      </p>
+    </div>
+    <div class="stage">
+      <canvas id="phy-canvas" width="880" height="560"></canvas>
+      <div class="controls">
+        <label>angle <input type="range" id="phy-angle" min="130" max="145" value="137.508" step="0.004"> <span class="val" id="phy-angle-val">137.508&deg;</span></label>
+        <button id="phy-golden">&phi; golden</button>
+        <button id="phy-replay">replay growth</button>
+        <span class="hint">try exactly 137.5 vs 137.508</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ V. DOUBLE PENDULUM ============ -->
+<section class="exhibit" id="pendulum">
+  <div class="wrap">
+    <div class="ex-head"><span class="ex-num">V.</span><h2>The Pendulum</h2></div>
+    <div class="ex-sub">two hinges are enough for chaos &middot; sensitive dependence</div>
+    <div class="prose">
+      <p>
+        One pendulum is the physicist's favorite pet: tame, periodic, solved.
+        Hang a second pendulum from the tip of the first and you get one of the
+        simplest chaotic systems known. Below are <strong>two</strong> double pendulums,
+        released from angles that differ by one ten-thousandth of a degree.
+      </p>
+      <p>
+        For a while they agree — then, suddenly and forever, they don't. This is
+        why weather forecasts decay: not missing physics, but the impossibility
+        of knowing today precisely enough to deserve next month.
+      </p>
+    </div>
+    <div class="stage">
+      <canvas id="dp-canvas" width="880" height="520"></canvas>
+      <div class="controls">
+        <button id="dp-drop">drop again</button>
+        <label style="user-select:none"><input type="checkbox" id="dp-trails" checked style="accent-color:var(--amber)"> trails</label>
+        <span class="hint">amber &amp; teal started 0.0001&deg; apart &middot; divergence: <span class="val" id="dp-div">0.0000</span></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap colophon">
+    <div class="glyph">&sect;</div>
+    <p>
+      Everything on this page is one HTML file with no dependencies, no build
+      step, and no images — every pattern you saw was computed in your browser
+      while you watched. View source; the machines are smaller than you'd think.
+    </p>
+    <p style="margin-top:12px">
+      Further reading: Wolfram, <i>A New Kind of Science</i> &middot;
+      Reynolds, <i>Flocks, Herds, and Schools</i> (1987) &middot;
+      Turing, <i>The Chemical Basis of Morphogenesis</i> (1952) &middot;
+      Vogel, <i>A Better Way to Construct the Sunflower Head</i> (1979).
+    </p>
+  </div>
+</footer>
+
+<script>
+"use strict";
+/* Shared: run an exhibit's frame loop only while it's on screen. */
+const running = new Map();
+const io = new IntersectionObserver(entries => {
+  for (const e of entries) {
+    const r = running.get(e.target);
+    if (r) r.visible = e.isIntersecting;
+  }
+}, { threshold: 0.05 });
+
+function loop(canvas, frame) {
+  const state = { visible: false };
+  running.set(canvas, state);
+  io.observe(canvas);
+  (function tick(t) {
+    if (state.visible) frame(t);
+    requestAnimationFrame(tick);
+  })(0);
+}
+
+function pointerPos(canvas, ev) {
+  const r = canvas.getBoundingClientRect();
+  return {
+    x: (ev.clientX - r.left) * canvas.width / r.width,
+    y: (ev.clientY - r.top) * canvas.height / r.height
+  };
+}
+
+/* ============ I. Elementary cellular automaton ============ */
+(() => {
+  const cv = document.getElementById("ca-canvas");
+  const ctx = cv.getContext("2d");
+  const CELL = 4, W = cv.width / CELL, H = cv.height / CELL;
+  let rule = 30, row, history, generation;
+
+  const ruleSlider = document.getElementById("ca-rule");
+  const ruleVal = document.getElementById("ca-rule-val");
+
+  function seed(random) {
+    row = new Uint8Array(W);
+    if (random) { for (let i = 0; i < W; i++) row[i] = Math.random() < 0.5 ? 1 : 0; }
+    else row[W >> 1] = 1;
+    history = [];
+    generation = 0;
+  }
+
+  function step() {
+    const next = new Uint8Array(W);
+    for (let i = 0; i < W; i++) {
+      const l = row[(i - 1 + W) % W], c = row[i], r = row[(i + 1) % W];
+      next[i] = (rule >> ((l << 2) | (c << 1) | r)) & 1;
+    }
+    history.push(row);
+    if (history.length > H) history.shift();
+    row = next;
+    generation++;
+  }
+
+  function draw() {
+    ctx.fillStyle = "#10141d";
+    ctx.fillRect(0, 0, cv.width, cv.height);
+    for (let y = 0; y < history.length; y++) {
+      const r = history[y];
+      // newest rows brighter, fading with age
+      const age = (history.length - 1 - y) / H;
+      ctx.fillStyle = `rgba(232,180,90,${1 - age * 0.75})`;
+      for (let x = 0; x < W; x++) {
+        if (r[x]) ctx.fillRect(x * CELL, y * CELL, CELL - 1, CELL - 1);
+      }
+    }
+  }
+
+  ruleSlider.addEventListener("input", () => {
+    rule = +ruleSlider.value;
+    ruleVal.textContent = rule;
+    seed(false);
+  });
+  document.getElementById("ca-seed").addEventListener("click", () => seed(false));
+  document.getElementById("ca-random").addEventListener("click", () => seed(true));
+  cv.addEventListener("pointerdown", () => seed(Math.random() < 0.5));
+
+  seed(false);
+  let last = 0;
+  loop(cv, t => {
+    if (t - last > 33) { step(); step(); draw(); last = t; }
+  });
+})();
+
+/* ============ II. Boids ============ */
+(() => {
+  const cv = document.getElementById("boids-canvas");
+  const ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height, N = 130;
+  const boids = [];
+  for (let i = 0; i < N; i++) {
+    const a = Math.random() * Math.PI * 2;
+    boids.push({
+      x: Math.random() * W, y: Math.random() * H,
+      vx: Math.cos(a) * 2, vy: Math.sin(a) * 2
+    });
+  }
+  const mouse = { x: -1e4, y: -1e4 };
+  cv.addEventListener("pointermove", e => Object.assign(mouse, pointerPos(cv, e)));
+  cv.addEventListener("pointerleave", () => { mouse.x = -1e4; mouse.y = -1e4; });
+
+  const sepS = document.getElementById("b-sep");
+  const aliS = document.getElementById("b-ali");
+  const cohS = document.getElementById("b-coh");
+
+  const VIEW = 62, VIEW2 = VIEW * VIEW, SEP = 24, SEP2 = SEP * SEP;
+  const MAXSPD = 3.4, MINSPD = 1.6;
+
+  function stepBoids() {
+    const kSep = sepS.value / 100 * 0.09;
+    const kAli = aliS.value / 100 * 0.05;
+    const kCoh = cohS.value / 100 * 0.0035;
+    for (const b of boids) {
+      let sx = 0, sy = 0, ax = 0, ay = 0, cx = 0, cy = 0, n = 0;
+      for (const o of boids) {
+        if (o === b) continue;
+        const dx = o.x - b.x, dy = o.y - b.y, d2 = dx * dx + dy * dy;
+        if (d2 > VIEW2) continue;
+        n++;
+        ax += o.vx; ay += o.vy;
+        cx += o.x; cy += o.y;
+        if (d2 < SEP2 && d2 > 0.01) { sx -= dx / d2; sy -= dy / d2; }
+      }
+      if (n > 0) {
+        b.vx += sx * kSep * 30 + (ax / n - b.vx) * kAli + (cx / n - b.x) * kCoh;
+        b.vy += sy * kSep * 30 + (ay / n - b.vy) * kAli + (cy / n - b.y) * kCoh;
+      }
+      // predator: flee the cursor
+      const pdx = b.x - mouse.x, pdy = b.y - mouse.y, pd2 = pdx * pdx + pdy * pdy;
+      if (pd2 < 120 * 120) {
+        const pd = Math.sqrt(pd2) + 1e-6;
+        b.vx += (pdx / pd) * 0.9; b.vy += (pdy / pd) * 0.9;
+      }
+      // soft walls
+      const M = 40, TURN = 0.14;
+      if (b.x < M) b.vx += TURN; if (b.x > W - M) b.vx -= TURN;
+      if (b.y < M) b.vy += TURN; if (b.y > H - M) b.vy -= TURN;
+      // speed clamp
+      const s = Math.hypot(b.vx, b.vy) || 1e-6;
+      const cl = s > MAXSPD ? MAXSPD / s : (s < MINSPD ? MINSPD / s : 1);
+      b.vx *= cl; b.vy *= cl;
+      b.x += b.vx; b.y += b.vy;
+    }
+  }
+
+  function drawBoids() {
+    ctx.fillStyle = "rgba(16,20,29,0.45)";  // motion-blur fade
+    ctx.fillRect(0, 0, W, H);
+    for (const b of boids) {
+      const a = Math.atan2(b.vy, b.vx);
+      ctx.save();
+      ctx.translate(b.x, b.y);
+      ctx.rotate(a);
+      ctx.fillStyle = "#6fd3c7";
+      ctx.beginPath();
+      ctx.moveTo(6, 0); ctx.lineTo(-5, 3.4); ctx.lineTo(-3, 0); ctx.lineTo(-5, -3.4);
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+    if (mouse.x > -1e3) {
+      ctx.strokeStyle = "rgba(224,122,139,0.8)";
+      ctx.beginPath();
+      ctx.arc(mouse.x, mouse.y, 7, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+
+  ctx.fillStyle = "#10141d"; ctx.fillRect(0, 0, W, H);
+  loop(cv, () => { stepBoids(); drawBoids(); });
+})();
+
+/* ============ III. Gray–Scott reaction–diffusion ============ */
+(() => {
+  const cv = document.getElementById("rd-canvas");
+  const ctx = cv.getContext("2d");
+  const W = 220, H = 130;            // simulation grid (upscaled to canvas)
+  const off = document.createElement("canvas");
+  off.width = W; off.height = H;
+  const octx = off.getContext("2d");
+  const img = octx.createImageData(W, H);
+
+  let A = new Float32Array(W * H), B = new Float32Array(W * H);
+  let A2 = new Float32Array(W * H), B2 = new Float32Array(W * H);
+  let feed = 0.0545, kill = 0.0620;
+  const DA = 1.0, DB = 0.5, DT = 1.0;
+
+  function reseed() {
+    A.fill(1); B.fill(0);
+    for (let s = 0; s < 12; s++) {
+      const cx = 10 + (Math.random() * (W - 20)) | 0;
+      const cy = 8 + (Math.random() * (H - 16)) | 0;
+      for (let y = -3; y <= 3; y++) for (let x = -3; x <= 3; x++) {
+        B[(cy + y) * W + (cx + x)] = 1;
+      }
+    }
+  }
+
+  function step() {
+    for (let y = 0; y < H; y++) {
+      const yu = ((y - 1 + H) % H) * W, yd = ((y + 1) % H) * W, y0 = y * W;
+      for (let x = 0; x < W; x++) {
+        const xl = (x - 1 + W) % W, xr = (x + 1) % W;
+        const i = y0 + x;
+        const a = A[i], b = B[i];
+        const lapA = A[y0 + xl] + A[y0 + xr] + A[yu + x] + A[yd + x]
+                   + 0.25 * (A[yu + xl] + A[yu + xr] + A[yd + xl] + A[yd + xr])
+                   - 5 * a;
+        const lapB = B[y0 + xl] + B[y0 + xr] + B[yu + x] + B[yd + x]
+                   + 0.25 * (B[yu + xl] + B[yu + xr] + B[yd + xl] + B[yd + xr])
+                   - 5 * b;
+        const abb = a * b * b;
+        A2[i] = a + (DA * lapA * 0.2 - abb + feed * (1 - a)) * DT;
+        B2[i] = b + (DB * lapB * 0.2 + abb - (kill + feed) * b) * DT;
+      }
+    }
+    [A, A2] = [A2, A]; [B, B2] = [B2, B];
+  }
+
+  function draw() {
+    const d = img.data;
+    for (let i = 0; i < W * H; i++) {
+      const v = Math.max(0, Math.min(1, (A[i] - B[i])));
+      // map: high B (pattern) -> amber glow; high A (substrate) -> deep panel blue
+      const t = 1 - v;
+      const j = i * 4;
+      d[j]     = 16 + t * (232 - 16);
+      d[j + 1] = 20 + t * (180 - 20);
+      d[j + 2] = 29 + t * (90 - 29);
+      d[j + 3] = 255;
+    }
+    octx.putImageData(img, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(off, 0, 0, cv.width, cv.height);
+  }
+
+  // painting
+  let painting = false;
+  function paint(ev) {
+    const p = pointerPos(cv, ev);
+    const gx = (p.x / cv.width * W) | 0, gy = (p.y / cv.height * H) | 0;
+    for (let y = -3; y <= 3; y++) for (let x = -3; x <= 3; x++) {
+      if (x * x + y * y > 10) continue;
+      const xx = (gx + x + W) % W, yy = (gy + y + H) % H;
+      B[yy * W + xx] = 1;
+    }
+  }
+  cv.addEventListener("pointerdown", e => { painting = true; paint(e); cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener("pointermove", e => { if (painting) paint(e); });
+  cv.addEventListener("pointerup", () => painting = false);
+  cv.addEventListener("pointercancel", () => painting = false);
+
+  document.getElementById("rd-preset").addEventListener("change", e => {
+    const [f, k] = e.target.value.split(",").map(Number);
+    feed = f; kill = k;
+  });
+  document.getElementById("rd-reset").addEventListener("click", reseed);
+
+  reseed();
+  loop(cv, () => {
+    for (let i = 0; i < 10; i++) step();
+    draw();
+  });
+})();
+
+/* ============ IV. Phyllotaxis ============ */
+(() => {
+  const cv = document.getElementById("phy-canvas");
+  const ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height;
+  const MAXN = 900;
+  let angleDeg = 137.508, n = 0;
+
+  const slider = document.getElementById("phy-angle");
+  const label = document.getElementById("phy-angle-val");
+
+  function draw() {
+    ctx.fillStyle = "#10141d";
+    ctx.fillRect(0, 0, W, H);
+    const cx = W / 2, cy = H / 2;
+    const a = angleDeg * Math.PI / 180;
+    const c = Math.min(W, H) / 2 / Math.sqrt(MAXN) * 0.96;
+    for (let i = 0; i < n; i++) {
+      const r = c * Math.sqrt(i);
+      const th = i * a;
+      const x = cx + r * Math.cos(th), y = cy + r * Math.sin(th);
+      const t = i / MAXN;
+      // inner seeds warm amber -> outer seeds teal
+      const cr = 232 + t * (111 - 232);
+      const cg = 180 + t * (211 - 180);
+      const cb = 90 + t * (199 - 90);
+      ctx.fillStyle = `rgb(${cr|0},${cg|0},${cb|0})`;
+      ctx.beginPath();
+      ctx.arc(x, y, 2.1 + t * 3.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  slider.addEventListener("input", () => {
+    angleDeg = +slider.value;
+    label.innerHTML = angleDeg.toFixed(3) + "&deg;";
+    n = MAXN;                      // when scrubbing, show full head instantly
+  });
+  document.getElementById("phy-golden").addEventListener("click", () => {
+    angleDeg = 137.508; slider.value = 137.508;
+    label.innerHTML = "137.508&deg;";
+    n = 0;
+  });
+  document.getElementById("phy-replay").addEventListener("click", () => n = 0);
+
+  loop(cv, () => {
+    if (n < MAXN) n = Math.min(MAXN, n + 7);
+    draw();
+  });
+})();
+
+/* ============ V. Double pendulum ============ */
+(() => {
+  const cv = document.getElementById("dp-canvas");
+  const ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height;
+  const G = 9.81, L1 = 1, L2 = 1, M1 = 1, M2 = 1;
+  const SCALE = 110, OX = W / 2, OY = H * 0.36;
+  const divEl = document.getElementById("dp-div");
+  const trailsBox = document.getElementById("dp-trails");
+
+  // state: [th1, w1, th2, w2]
+  let pA, pB, trailA, trailB;
+
+  function drop() {
+    const th = Math.PI * (0.55 + Math.random() * 0.4);   // high release
+    const th2 = Math.PI * (Math.random() - 0.5);
+    pA = [th, 0, th + th2, 0];
+    pB = [th + 0.0001 * Math.PI / 180, 0, th + th2, 0];  // 0.0001° apart
+    trailA = []; trailB = [];
+    ctx.fillStyle = "#10141d"; ctx.fillRect(0, 0, W, H);
+  }
+
+  function deriv(s) {
+    const [t1, w1, t2, w2] = s;
+    const d = t1 - t2;
+    const cd = Math.cos(d), sd = Math.sin(d);
+    const den = 2 * M1 + M2 - M2 * Math.cos(2 * d);
+    const a1 = (-G * (2 * M1 + M2) * Math.sin(t1)
+                - M2 * G * Math.sin(t1 - 2 * t2)
+                - 2 * sd * M2 * (w2 * w2 * L2 + w1 * w1 * L1 * cd))
+               / (L1 * den);
+    const a2 = (2 * sd * (w1 * w1 * L1 * (M1 + M2)
+                + G * (M1 + M2) * Math.cos(t1)
+                + w2 * w2 * L2 * M2 * cd))
+               / (L2 * den);
+    return [w1, a1, w2, a2];
+  }
+
+  function rk4(s, dt) {
+    const k1 = deriv(s);
+    const k2 = deriv(s.map((v, i) => v + k1[i] * dt / 2));
+    const k3 = deriv(s.map((v, i) => v + k2[i] * dt / 2));
+    const k4 = deriv(s.map((v, i) => v + k3[i] * dt));
+    return s.map((v, i) => v + dt / 6 * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]));
+  }
+
+  function tip(s) {
+    const x1 = OX + SCALE * L1 * Math.sin(s[0]);
+    const y1 = OY + SCALE * L1 * Math.cos(s[0]);
+    return {
+      x1, y1,
+      x2: x1 + SCALE * L2 * Math.sin(s[2]),
+      y2: y1 + SCALE * L2 * Math.cos(s[2])
+    };
+  }
+
+  function drawArm(t, color) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(OX, OY); ctx.lineTo(t.x1, t.y1); ctx.lineTo(t.x2, t.y2);
+    ctx.stroke();
+    ctx.fillStyle = color;
+    for (const [x, y, r] of [[t.x1, t.y1, 5], [t.x2, t.y2, 7]]) {
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  function drawTrail(trail, color) {
+    if (trail.length < 2) return;
+    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(trail[0][0], trail[0][1]);
+    for (let i = 1; i < trail.length; i++) ctx.lineTo(trail[i][0], trail[i][1]);
+    ctx.stroke();
+  }
+
+  drop();
+  document.getElementById("dp-drop").addEventListener("click", drop);
+  cv.addEventListener("pointerdown", drop);
+
+  loop(cv, () => {
+    const dt = 0.004;
+    for (let i = 0; i < 5; i++) { pA = rk4(pA, dt); pB = rk4(pB, dt); }
+    const tA = tip(pA), tB = tip(pB);
+    trailA.push([tA.x2, tA.y2]); if (trailA.length > 900) trailA.shift();
+    trailB.push([tB.x2, tB.y2]); if (trailB.length > 900) trailB.shift();
+
+    ctx.fillStyle = "#10141d"; ctx.fillRect(0, 0, W, H);
+    if (trailsBox.checked) {
+      drawTrail(trailA, "rgba(232,180,90,0.35)");
+      drawTrail(trailB, "rgba(111,211,199,0.35)");
+    }
+    // pivot
+    ctx.fillStyle = "#5a6274";
+    ctx.beginPath(); ctx.arc(OX, OY, 4, 0, Math.PI * 2); ctx.fill();
+    drawArm(tA, "#e8b45a");
+    drawArm(tB, "#6fd3c7");
+
+    // angular divergence, wrapped to [0, π]
+    let dv = Math.abs(pA[0] - pB[0]) % (2 * Math.PI);
+    if (dv > Math.PI) dv = 2 * Math.PI - dv;
+    divEl.textContent = dv.toFixed(4);
+  });
+})();
+</script>
+</body>
+</html>
