@@ -131,8 +131,29 @@
     width: 100%;
     height: auto;
     cursor: crosshair;
-    touch-action: none;
+    touch-action: pan-y; /* let the page scroll over canvases on touch screens */
   }
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 18px;
+    border-top: 1px solid var(--panel-edge);
+  }
+  .chips + .controls { border-top: none; padding-top: 2px; }
+  .chip {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-dim);
+    background: transparent;
+    border: 1px solid var(--panel-edge);
+    border-radius: 999px;
+    padding: 6px 13px;
+    cursor: pointer;
+    transition: border-color .15s, color .15s;
+  }
+  .chip:hover { border-color: var(--cyan); color: var(--cyan); }
+  .chip.active { border-color: var(--amber); color: var(--amber); }
   .controls {
     display: flex;
     flex-wrap: wrap;
@@ -167,7 +188,7 @@
     background: var(--amber);
     border: 2px solid var(--bg);
   }
-  button, select {
+  button {
     font-family: var(--mono);
     font-size: 12.5px;
     color: var(--ink);
@@ -178,8 +199,31 @@
     cursor: pointer;
     transition: border-color .15s, color .15s;
   }
-  button:hover, select:hover { border-color: var(--amber); color: var(--amber); }
-  select { background: var(--panel); }
+  button:hover { border-color: var(--amber); color: var(--amber); }
+  input[type="number"] {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--cyan);
+    background: rgba(255,255,255,.03);
+    border: 1px solid var(--panel-edge);
+    border-radius: 6px;
+    padding: 4px 6px;
+    width: 5.8em;
+  }
+  input[type="number"]:focus { outline: none; border-color: var(--amber); }
+  input[type="checkbox"] { accent-color: var(--amber); width: 16px; height: 16px; }
+
+  /* touch screens: bigger targets, no focus-zoom on iOS (16px inputs) */
+  @media (pointer: coarse) {
+    .chip { padding: 10px 16px; font-size: 13px; }
+    button { padding: 9px 16px; font-size: 13px; }
+    input[type="number"] { font-size: 16px; padding: 8px 8px; width: 5.4em; }
+    input[type="range"] { height: 6px; min-width: 150px; }
+    input[type="range"]::-webkit-slider-thumb { width: 22px; height: 22px; }
+    input[type="range"]::-moz-range-thumb { width: 20px; height: 20px; }
+    input[type="checkbox"] { width: 22px; height: 22px; }
+    .controls { gap: 14px 20px; }
+  }
 
   /* ---------- footer ---------- */
   footer {
@@ -262,11 +306,12 @@
     </div>
     <div class="stage">
       <canvas id="ca-canvas" width="880" height="440"></canvas>
+      <div class="chips" id="ca-chips"></div>
       <div class="controls">
-        <label>rule <input type="range" id="ca-rule" min="0" max="255" value="30" step="1"> <span class="val" id="ca-rule-val">30</span></label>
+        <label>rule <input type="range" id="ca-rule" min="0" max="255" value="30" step="1"> <input type="number" id="ca-rule-num" min="0" max="255" step="1" value="30" aria-label="rule number"></label>
+        <label>speed <input type="range" id="ca-speed" min="1" max="8" value="2" step="1"> <input type="number" id="ca-speed-num" min="1" max="8" step="1" value="2" aria-label="generations per frame"></label>
         <button id="ca-seed">single seed</button>
         <button id="ca-random">random seed</button>
-        <span class="hint">try 30, 90, 110, 184, 73</span>
       </div>
     </div>
   </div>
@@ -298,11 +343,13 @@
     </div>
     <div class="stage">
       <canvas id="boids-canvas" width="880" height="480"></canvas>
+      <div class="chips" id="b-chips"></div>
       <div class="controls">
-        <label>separate <input type="range" id="b-sep" min="0" max="200" value="100"></label>
-        <label>align <input type="range" id="b-ali" min="0" max="200" value="100"></label>
-        <label>cohere <input type="range" id="b-coh" min="0" max="200" value="100"></label>
-        <span class="hint">cursor = predator &middot; try cohere at max</span>
+        <label>separate <input type="range" id="b-sep" min="0" max="200" value="100"> <input type="number" id="b-sep-num" min="0" max="200" step="1" value="100" aria-label="separation strength"></label>
+        <label>align <input type="range" id="b-ali" min="0" max="200" value="100"> <input type="number" id="b-ali-num" min="0" max="200" step="1" value="100" aria-label="alignment strength"></label>
+        <label>cohere <input type="range" id="b-coh" min="0" max="200" value="100"> <input type="number" id="b-coh-num" min="0" max="200" step="1" value="100" aria-label="cohesion strength"></label>
+        <label>birds <input type="range" id="b-n" min="20" max="250" value="130" step="5"> <input type="number" id="b-n-num" min="1" max="400" step="1" value="130" aria-label="number of birds"></label>
+        <span class="hint">cursor or finger = predator</span>
       </div>
     </div>
   </div>
@@ -332,16 +379,10 @@
     </div>
     <div class="stage">
       <canvas id="rd-canvas" width="880" height="520"></canvas>
+      <div class="chips" id="rd-chips"></div>
       <div class="controls">
-        <label>regime
-          <select id="rd-preset">
-            <option value="0.0545,0.0620" selected>coral</option>
-            <option value="0.0367,0.0649">mitosis</option>
-            <option value="0.0780,0.0610">worms</option>
-            <option value="0.0290,0.0570">solitons</option>
-            <option value="0.0620,0.0609">labyrinth</option>
-          </select>
-        </label>
+        <label>feed <input type="range" id="rd-f" min="0.010" max="0.090" step="0.0005" value="0.0545"> <input type="number" id="rd-f-num" min="0" max="0.12" step="0.0005" value="0.0545" aria-label="feed rate"></label>
+        <label>kill <input type="range" id="rd-k" min="0.040" max="0.070" step="0.0005" value="0.062"> <input type="number" id="rd-k-num" min="0" max="0.08" step="0.0005" value="0.062" aria-label="kill rate"></label>
         <button id="rd-reset">reseed</button>
         <span class="hint">drag to paint chemical B</span>
       </div>
@@ -373,11 +414,12 @@
     </div>
     <div class="stage">
       <canvas id="phy-canvas" width="880" height="560"></canvas>
+      <div class="chips" id="phy-chips"></div>
       <div class="controls">
-        <label>angle <input type="range" id="phy-angle" min="130" max="145" value="137.508" step="0.004"> <span class="val" id="phy-angle-val">137.508&deg;</span></label>
-        <button id="phy-golden">&phi; golden</button>
+        <label>angle&deg; <input type="range" id="phy-angle" min="0" max="360" value="137.508" step="0.02"> <input type="number" id="phy-angle-num" min="0" max="360" step="0.001" value="137.508" aria-label="divergence angle in degrees"></label>
+        <label>seeds <input type="range" id="phy-n" min="100" max="2000" value="900" step="20"> <input type="number" id="phy-n-num" min="50" max="3000" step="10" value="900" aria-label="seed count"></label>
         <button id="phy-replay">replay growth</button>
-        <span class="hint">try exactly 137.5 vs 137.508</span>
+        <span class="hint">scrub the angle slowly; spokes flash at every fraction</span>
       </div>
     </div>
   </div>
@@ -410,10 +452,13 @@
     </div>
     <div class="stage">
       <canvas id="dp-canvas" width="880" height="520"></canvas>
+      <div class="chips" id="dp-chips"></div>
       <div class="controls">
         <button id="dp-drop">drop again</button>
-        <label style="user-select:none"><input type="checkbox" id="dp-trails" checked style="accent-color:var(--amber)"> trails</label>
-        <span class="hint">amber &amp; teal started 0.0001&deg; apart &middot; divergence: <span class="val" id="dp-div">0.0000</span></span>
+        <label>&Delta; start&deg; <input type="number" id="dp-delta" min="0" max="45" step="0.0001" value="0.0001" aria-label="initial angle gap in degrees"></label>
+        <label>gravity <input type="range" id="dp-g" min="2" max="25" step="0.1" value="9.8"> <input type="number" id="dp-g-num" min="0.5" max="50" step="0.1" value="9.8" aria-label="gravity"></label>
+        <label style="user-select:none"><input type="checkbox" id="dp-trails" checked> trails</label>
+        <span class="hint">divergence <span class="val" id="dp-div">0.0000</span> rad</span>
       </div>
     </div>
   </div>
@@ -467,15 +512,50 @@ function pointerPos(canvas, ev) {
   };
 }
 
+/* Pair a slider with an editable number box. Returns a programmatic setter
+   (used by presets) that updates both inputs and calls apply(value). */
+function bindPair(rangeId, numId, apply) {
+  const r = document.getElementById(rangeId);
+  const n = document.getElementById(numId);
+  const set = v => {
+    v = +v;
+    if (!isFinite(v)) v = +n.min || 0;
+    v = Math.min(+n.max, Math.max(+n.min, v));
+    r.value = v; n.value = v;
+    apply(v);
+  };
+  r.addEventListener("input", () => { n.value = r.value; apply(+r.value); });
+  n.addEventListener("change", () => set(n.value));
+  return set;
+}
+
+/* Build a row of preset chips. Clicking a chip runs its apply() and marks it
+   active; call .clear() when a manual adjustment invalidates the preset. */
+function chipRow(id, items) {
+  const el = document.getElementById(id);
+  const btns = items.map(it => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "chip";
+    b.innerHTML = it.label;
+    b.addEventListener("click", () => {
+      it.apply();
+      btns.forEach(x => x.classList.toggle("active", x === b));
+    });
+    el.appendChild(b);
+    return b;
+  });
+  if (btns.length) btns[0].classList.add("active");
+  return { clear: () => btns.forEach(x => x.classList.remove("active")) };
+}
+
 /* ============ I. Elementary cellular automaton ============ */
 (() => {
   const cv = document.getElementById("ca-canvas");
   const ctx = cv.getContext("2d");
   const CELL = 4, W = cv.width / CELL, H = cv.height / CELL;
-  let rule = 30, row, history, generation;
-
-  const ruleSlider = document.getElementById("ca-rule");
-  const ruleVal = document.getElementById("ca-rule-val");
+  let rule = 30, speed = 2, row, history, generation;
+  let chipsRef = null;
 
   function seed(random) {
     row = new Uint8Array(W);
@@ -511,19 +591,37 @@ function pointerPos(canvas, ev) {
     }
   }
 
-  ruleSlider.addEventListener("input", () => {
-    rule = +ruleSlider.value;
-    ruleVal.textContent = rule;
+  const setRule = bindPair("ca-rule", "ca-rule-num", v => {
+    if (chipsRef) chipsRef.clear();
+    rule = Math.round(v);
     seed(false);
   });
+  bindPair("ca-speed", "ca-speed-num", v => speed = Math.round(v));
   document.getElementById("ca-seed").addEventListener("click", () => seed(false));
   document.getElementById("ca-random").addEventListener("click", () => seed(true));
   cv.addEventListener("pointerdown", () => seed(Math.random() < 0.5));
 
+  function preset(r, random) {
+    setRule(r);          // clears chips; chipRow re-marks the clicked one
+    seed(random);
+  }
+  chipsRef = chipRow("ca-chips", [
+    { label: "30 &middot; chaos",     apply: () => preset(30, false) },
+    { label: "90 &middot; fractal",   apply: () => preset(90, false) },
+    { label: "110 &middot; computer", apply: () => preset(110, true) },
+    { label: "184 &middot; traffic",  apply: () => preset(184, true) },
+    { label: "73 &middot; membranes", apply: () => preset(73, true) },
+    { label: "150 &middot; lace",     apply: () => preset(150, false) },
+  ]);
+
   seed(false);
   let last = 0;
   loop(cv, t => {
-    if (t - last > 33) { step(); step(); draw(); last = t; }
+    if (t - last > 33) {
+      for (let i = 0; i < speed; i++) step();
+      draw();
+      last = t;
+    }
   });
 })();
 
@@ -531,30 +629,55 @@ function pointerPos(canvas, ev) {
 (() => {
   const cv = document.getElementById("boids-canvas");
   const ctx = cv.getContext("2d");
-  const W = cv.width, H = cv.height, N = 130;
+  const W = cv.width, H = cv.height;
+  const p = { sep: 100, ali: 100, coh: 100 };
   const boids = [];
-  for (let i = 0; i < N; i++) {
+  let chipsRef = null;
+
+  function addBoid() {
     const a = Math.random() * Math.PI * 2;
     boids.push({
       x: Math.random() * W, y: Math.random() * H,
       vx: Math.cos(a) * 2, vy: Math.sin(a) * 2
     });
   }
+  function setCount(n) {
+    n = Math.round(n);
+    while (boids.length < n) addBoid();
+    boids.length = n;
+  }
+  setCount(130);
+
   const mouse = { x: -1e4, y: -1e4 };
   cv.addEventListener("pointermove", e => Object.assign(mouse, pointerPos(cv, e)));
+  cv.addEventListener("pointerdown", e => Object.assign(mouse, pointerPos(cv, e)));
   cv.addEventListener("pointerleave", () => { mouse.x = -1e4; mouse.y = -1e4; });
+  cv.addEventListener("pointerup", () => { mouse.x = -1e4; mouse.y = -1e4; });
 
-  const sepS = document.getElementById("b-sep");
-  const aliS = document.getElementById("b-ali");
-  const cohS = document.getElementById("b-coh");
+  const clearThen = fn => v => { if (chipsRef) chipsRef.clear(); fn(v); };
+  const setSep = bindPair("b-sep", "b-sep-num", clearThen(v => p.sep = v));
+  const setAli = bindPair("b-ali", "b-ali-num", clearThen(v => p.ali = v));
+  const setCoh = bindPair("b-coh", "b-coh-num", clearThen(v => p.coh = v));
+  const setN   = bindPair("b-n",   "b-n-num",   clearThen(setCount));
+
+  function preset(sep, ali, coh, n) {
+    setSep(sep); setAli(ali); setCoh(coh); setN(n);
+  }
+  chipsRef = chipRow("b-chips", [
+    { label: "murmuration",  apply: () => preset(100, 100, 100, 130) },
+    { label: "tight school", apply: () => preset(60, 180, 160, 180) },
+    { label: "midge cloud",  apply: () => preset(140, 5, 90, 120) },
+    { label: "one dense ball", apply: () => preset(40, 60, 200, 160) },
+    { label: "loners",       apply: () => preset(200, 0, 0, 60) },
+  ]);
 
   const VIEW = 62, VIEW2 = VIEW * VIEW, SEP = 24, SEP2 = SEP * SEP;
   const MAXSPD = 3.4, MINSPD = 1.6;
 
   function stepBoids() {
-    const kSep = sepS.value / 100 * 0.09;
-    const kAli = aliS.value / 100 * 0.05;
-    const kCoh = cohS.value / 100 * 0.0035;
+    const kSep = p.sep / 100 * 0.09;
+    const kAli = p.ali / 100 * 0.05;
+    const kCoh = p.coh / 100 * 0.0035;
     for (const b of boids) {
       let sx = 0, sy = 0, ax = 0, ay = 0, cx = 0, cy = 0, n = 0;
       for (const o of boids) {
@@ -627,6 +750,7 @@ function pointerPos(canvas, ev) {
   let A = new Float32Array(W * H), B = new Float32Array(W * H);
   let A2 = new Float32Array(W * H), B2 = new Float32Array(W * H);
   let feed = 0.0545, kill = 0.0620;
+  let chipsRef = null;
   const DA = 1.0, DB = 0.5, DT = 1.0;
 
   function reseed() {
@@ -694,11 +818,23 @@ function pointerPos(canvas, ev) {
   cv.addEventListener("pointerup", () => painting = false);
   cv.addEventListener("pointercancel", () => painting = false);
 
-  document.getElementById("rd-preset").addEventListener("change", e => {
-    const [f, k] = e.target.value.split(",").map(Number);
-    feed = f; kill = k;
-  });
+  const clearThen = fn => v => { if (chipsRef) chipsRef.clear(); fn(v); };
+  const setF = bindPair("rd-f", "rd-f-num", clearThen(v => feed = v));
+  const setK = bindPair("rd-k", "rd-k-num", clearThen(v => kill = v));
   document.getElementById("rd-reset").addEventListener("click", reseed);
+
+  /* Named regions of Gray-Scott parameter space (after Pearson, 1993).
+     Switching without reseeding lets the current pattern morph into the
+     new regime, which is half the fun. */
+  chipsRef = chipRow("rd-chips", [
+    { label: "coral",    apply: () => { setF(0.0545); setK(0.0620); } },
+    { label: "mitosis",  apply: () => { setF(0.0367); setK(0.0649); } },
+    { label: "worms",    apply: () => { setF(0.0780); setK(0.0610); } },
+    { label: "mazes",    apply: () => { setF(0.0290); setK(0.0570); } },
+    { label: "cheetah",  apply: () => { setF(0.0390); setK(0.0580); } },
+    { label: "chaos",    apply: () => { setF(0.0180); setK(0.0510); } },
+    { label: "drifters", apply: () => { setF(0.0140); setK(0.0540); } },
+  ]);
 
   reseed();
   loop(cv, () => {
@@ -712,48 +848,58 @@ function pointerPos(canvas, ev) {
   const cv = document.getElementById("phy-canvas");
   const ctx = cv.getContext("2d");
   const W = cv.width, H = cv.height;
-  const MAXN = 900;
-  let angleDeg = 137.508, n = 0;
-
-  const slider = document.getElementById("phy-angle");
-  const label = document.getElementById("phy-angle-val");
+  let angleDeg = 137.508, maxN = 900, n = 0;
+  let chipsRef = null;
 
   function draw() {
     ctx.fillStyle = "#10141d";
     ctx.fillRect(0, 0, W, H);
     const cx = W / 2, cy = H / 2;
     const a = angleDeg * Math.PI / 180;
-    const c = Math.min(W, H) / 2 / Math.sqrt(MAXN) * 0.96;
+    const c = Math.min(W, H) / 2 / Math.sqrt(maxN) * 0.96;
+    const dot = Math.max(1.2, 2.1 * Math.sqrt(900 / maxN));
     for (let i = 0; i < n; i++) {
       const r = c * Math.sqrt(i);
       const th = i * a;
       const x = cx + r * Math.cos(th), y = cy + r * Math.sin(th);
-      const t = i / MAXN;
+      const t = i / maxN;
       // inner seeds warm amber -> outer seeds teal
       const cr = 232 + t * (111 - 232);
       const cg = 180 + t * (211 - 180);
       const cb = 90 + t * (199 - 90);
       ctx.fillStyle = `rgb(${cr|0},${cg|0},${cb|0})`;
       ctx.beginPath();
-      ctx.arc(x, y, 2.1 + t * 3.4, 0, Math.PI * 2);
+      ctx.arc(x, y, dot * (1 + t * 1.6), 0, Math.PI * 2);
       ctx.fill();
     }
   }
 
-  slider.addEventListener("input", () => {
-    angleDeg = +slider.value;
-    label.innerHTML = angleDeg.toFixed(3) + "&deg;";
-    n = MAXN;                      // when scrubbing, show full head instantly
+  const setAngle = bindPair("phy-angle", "phy-angle-num", v => {
+    if (chipsRef) chipsRef.clear();
+    angleDeg = v;
+    n = maxN;                      // when scrubbing, show the full head instantly
   });
-  document.getElementById("phy-golden").addEventListener("click", () => {
-    angleDeg = 137.508; slider.value = 137.508;
-    label.innerHTML = "137.508&deg;";
-    n = 0;
+  bindPair("phy-n", "phy-n-num", v => {
+    maxN = Math.round(v);
+    n = maxN;
   });
   document.getElementById("phy-replay").addEventListener("click", () => n = 0);
 
+  function preset(deg) {
+    setAngle(deg);   // clears chips; chipRow re-marks the clicked one
+    n = 0;           // presets replay the growth so the failure mode is visible
+  }
+  chipsRef = chipRow("phy-chips", [
+    { label: "&phi; 137.508&deg;", apply: () => preset(137.508) },
+    { label: "137.500&deg;",       apply: () => preset(137.5) },
+    { label: "137.600&deg;",       apply: () => preset(137.6) },
+    { label: "Lucas 99.502&deg;",  apply: () => preset(99.502) },
+    { label: "1/7 turn 51.429&deg;", apply: () => preset(51.429) },
+    { label: "90&deg; spokes",     apply: () => preset(90) },
+  ]);
+
   loop(cv, () => {
-    if (n < MAXN) n = Math.min(MAXN, n + 7);
+    if (n < maxN) n = Math.min(maxN, n + Math.max(4, maxN / 128));
     draw();
   });
 })();
@@ -763,19 +909,27 @@ function pointerPos(canvas, ev) {
   const cv = document.getElementById("dp-canvas");
   const ctx = cv.getContext("2d");
   const W = cv.width, H = cv.height;
-  const G = 9.81, L1 = 1, L2 = 1, M1 = 1, M2 = 1;
+  const L1 = 1, L2 = 1, M1 = 1, M2 = 1;
   const SCALE = 110, OX = W / 2, OY = H * 0.36;
   const divEl = document.getElementById("dp-div");
   const trailsBox = document.getElementById("dp-trails");
+  const deltaBox = document.getElementById("dp-delta");
+  let g = 9.8;
 
-  // state: [th1, w1, th2, w2]
+  // state: [th1, w1, th2, w2]; scenario() yields release angles in radians
   let pA, pB, trailA, trailB;
+  const randomScenario = () => {
+    const t1 = Math.PI * (0.55 + Math.random() * 0.4);
+    return [t1, t1 + Math.PI * (Math.random() - 0.5)];
+  };
+  let scenario = randomScenario;
 
   function drop() {
-    const th = Math.PI * (0.55 + Math.random() * 0.4);   // high release
-    const th2 = Math.PI * (Math.random() - 0.5);
-    pA = [th, 0, th + th2, 0];
-    pB = [th + 0.0001 * Math.PI / 180, 0, th + th2, 0];  // 0.0001° apart
+    const [t1, t2] = scenario();
+    let d = +deltaBox.value;
+    if (!isFinite(d) || d < 0) { d = 0.0001; deltaBox.value = d; }
+    pA = [t1, 0, t2, 0];
+    pB = [t1 + d * Math.PI / 180, 0, t2, 0];
     trailA = []; trailB = [];
     ctx.fillStyle = "#10141d"; ctx.fillRect(0, 0, W, H);
   }
@@ -785,12 +939,12 @@ function pointerPos(canvas, ev) {
     const d = t1 - t2;
     const cd = Math.cos(d), sd = Math.sin(d);
     const den = 2 * M1 + M2 - M2 * Math.cos(2 * d);
-    const a1 = (-G * (2 * M1 + M2) * Math.sin(t1)
-                - M2 * G * Math.sin(t1 - 2 * t2)
+    const a1 = (-g * (2 * M1 + M2) * Math.sin(t1)
+                - M2 * g * Math.sin(t1 - 2 * t2)
                 - 2 * sd * M2 * (w2 * w2 * L2 + w1 * w1 * L1 * cd))
                / (L1 * den);
     const a2 = (2 * sd * (w1 * w1 * L1 * (M1 + M2)
-                + G * (M1 + M2) * Math.cos(t1)
+                + g * (M1 + M2) * Math.cos(t1)
                 + w2 * w2 * L2 * M2 * cd))
                / (L2 * den);
     return [w1, a1, w2, a2];
@@ -839,6 +993,17 @@ function pointerPos(canvas, ev) {
   drop();
   document.getElementById("dp-drop").addEventListener("click", drop);
   cv.addEventListener("pointerdown", drop);
+  deltaBox.addEventListener("change", drop);
+  bindPair("dp-g", "dp-g-num", v => g = v);
+
+  const deg = d => d * Math.PI / 180;
+  chipRow("dp-chips", [
+    { label: "random drop",  apply: () => { scenario = randomScenario; drop(); } },
+    { label: "high drop",    apply: () => { scenario = () => [deg(150), deg(120)]; drop(); } },
+    { label: "over the top", apply: () => { scenario = () => [deg(179), deg(0)]; drop(); } },
+    { label: "windmill",     apply: () => { scenario = () => [deg(170), deg(-100)]; drop(); } },
+    { label: "gentle &middot; tame", apply: () => { scenario = () => [deg(18), deg(28)]; drop(); } },
+  ]);
 
   loop(cv, () => {
     const dt = 0.004;
