@@ -121,11 +121,28 @@
   }
 
   .stage {
+    position: relative;
     background: var(--panel);
     border: 1px solid var(--panel-edge);
     border-radius: 12px;
     overflow: hidden;
   }
+  .status-badge {
+    position: absolute;
+    top: 10px; right: 10px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: .08em;
+    color: var(--ink-faint);
+    background: rgba(11,14,20,.72);
+    border: 1px solid var(--panel-edge);
+    border-radius: 999px;
+    padding: 3px 10px;
+    pointer-events: none;
+  }
+  .status-badge::before { content: "\25CF\00a0"; opacity: .8; }
+  .status-badge.live { color: var(--cyan); border-color: rgba(111,211,199,.3); }
+  .pause-btn { min-width: 6.4em; text-align: center; }
   .stage canvas {
     display: block;
     width: 100%;
@@ -485,21 +502,64 @@
 
 <script>
 "use strict";
-/* Shared: run an exhibit's frame loop only while it's on screen. */
+/* Shared: each exhibit animates only while its canvas is on screen, and can
+   also be paused by hand. The badge in the canvas corner shows which state
+   it is in. Users who ask the OS for reduced motion get formed, still
+   pictures instead of animation, with a play button to opt back in. */
+const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const running = new Map();
 const io = new IntersectionObserver(entries => {
   for (const e of entries) {
     const r = running.get(e.target);
-    if (r) r.visible = e.isIntersecting;
+    if (r) { r.visible = e.isIntersecting; r.update(); }
   }
 }, { threshold: 0.05 });
 
 function loop(canvas, frame) {
-  const state = { visible: false };
+  const stage = canvas.closest(".stage");
+  const state = { visible: false, paused: REDUCED, update };
   running.set(canvas, state);
   io.observe(canvas);
+
+  const badge = document.createElement("div");
+  badge.className = "status-badge";
+  stage.appendChild(badge);
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "pause-btn";
+  const controls = stage.querySelector(".controls");
+  controls.insertBefore(btn, controls.firstChild);
+  btn.addEventListener("click", e => {
+    e.stopPropagation();
+    state.paused = !state.paused;
+    update();
+  });
+
+  // touching any control of a paused exhibit wakes it back up
+  const wake = e => {
+    if (state.paused && e.target !== btn) { state.paused = false; update(); }
+  };
+  stage.addEventListener("click", wake);
+  stage.addEventListener("input", wake);
+
+  function update() {
+    btn.innerHTML = state.paused ? "&#9655; play" : "&#10073;&#10073; pause";
+    badge.textContent = state.visible ? (state.paused ? "paused" : "live") : "asleep off screen";
+    badge.classList.toggle("live", state.visible && !state.paused);
+  }
+  update();
+
+  let warmed = false;
   (function tick(t) {
-    if (state.visible) frame(t);
+    if (state.visible) {
+      if (!warmed) {
+        warmed = true;
+        // reduced motion: run the simulation forward without animating it
+        if (REDUCED) for (let i = 0; i < 120; i++) frame(t + i * 50);
+      }
+      if (!state.paused) frame(t);
+    }
     requestAnimationFrame(tick);
   })(0);
 }
