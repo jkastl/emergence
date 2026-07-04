@@ -285,7 +285,8 @@
       Everything runs live in your browser. Tap the presets to jump between
       notable configurations, drag on the canvases, and edit any number
       directly when you want an exact value. To save battery, each simulation
-      pauses itself while it is scrolled off screen.
+      sleeps while it is scrolled off screen, and stops computing once its
+      picture has settled; touching any of its controls wakes it.
     </p>
     <nav class="toc">
       <a href="#automaton"><span class="n">I</span>The Automaton</a>
@@ -594,7 +595,7 @@ const io = new IntersectionObserver(entries => {
 
 function loop(canvas, frame) {
   const stage = canvas.closest(".stage");
-  const state = { visible: false, paused: REDUCED, update };
+  const state = { visible: false, paused: REDUCED, idle: false, update };
   running.set(canvas, state);
   io.observe(canvas);
 
@@ -613,17 +614,25 @@ function loop(canvas, frame) {
     update();
   });
 
-  // touching any control of a paused exhibit wakes it back up
+  // touching any control of a paused or settled exhibit wakes it back up
   const wake = e => {
-    if (state.paused && e.target !== btn) { state.paused = false; update(); }
+    if (e.target === btn) return;
+    if (state.paused || state.idle) {
+      state.paused = false;
+      state.idle = false;
+      update();
+    }
   };
   stage.addEventListener("click", wake);
   stage.addEventListener("input", wake);
+  stage.addEventListener("pointerdown", wake);
 
   function update() {
     btn.innerHTML = state.paused ? "&#9655; play" : "&#10073;&#10073; pause";
-    badge.textContent = state.visible ? (state.paused ? "paused" : "live") : "asleep off screen";
-    badge.classList.toggle("live", state.visible && !state.paused);
+    badge.textContent = !state.visible ? "asleep off screen"
+                      : state.paused ? "paused"
+                      : state.idle ? "settled" : "live";
+    badge.classList.toggle("live", state.visible && !state.paused && !state.idle);
   }
   update();
 
@@ -635,7 +644,12 @@ function loop(canvas, frame) {
         // reduced motion: run the simulation forward without animating it
         if (REDUCED) for (let i = 0; i < 120; i++) frame(t + i * 50);
       }
-      if (!state.paused) frame(t);
+      // a frame that returns false is declaring its picture finished;
+      // stop computing until something wakes the exhibit
+      if (!state.paused && !state.idle && frame(t) === false) {
+        state.idle = true;
+        update();
+      }
     }
     requestAnimationFrame(tick);
   })(0);
@@ -691,7 +705,7 @@ function chipRow(id, items) {
   const cv = document.getElementById("ca-canvas");
   const ctx = cv.getContext("2d");
   const CELL = 4, W = cv.width / CELL, H = cv.height / CELL;
-  let rule = 30, speed = 2, row, history, generation;
+  let rule = 30, speed = 2, row, history, generation, quiet;
   let chipsRef = null;
 
   function seed(random) {
@@ -700,6 +714,7 @@ function chipRow(id, items) {
     else row[W >> 1] = 1;
     history = [];
     generation = 0;
+    quiet = 0;
   }
 
   function step() {
@@ -708,6 +723,11 @@ function chipRow(id, items) {
       const l = row[(i - 1 + W) % W], c = row[i], r = row[(i + 1) % W];
       next[i] = (rule >> ((l << 2) | (c << 1) | r)) & 1;
     }
+    // a rule that has frozen scrolls identical rows; once they fill the
+    // canvas there is nothing left to watch
+    let same = true;
+    for (let i = 0; i < W; i++) if (next[i] !== row[i]) { same = false; break; }
+    quiet = same ? quiet + 1 : 0;
     history.push(row);
     if (history.length > H) history.shift();
     row = next;
@@ -754,6 +774,7 @@ function chipRow(id, items) {
   seed(false);
   let last = 0;
   loop(cv, t => {
+    if (quiet > H + 4) return false;
     if (t - last > 33) {
       for (let i = 0; i < speed; i++) step();
       draw();
@@ -887,10 +908,12 @@ function chipRow(id, items) {
   let A = new Float32Array(W * H), B = new Float32Array(W * H);
   let A2 = new Float32Array(W * H), B2 = new Float32Array(W * H);
   let feed = 0.0545, kill = 0.0620;
-  let chipsRef = null;
+  let chipsRef = null, quiet = 0;
   const DA = 1.0, DB = 0.5, DT = 1.0;
+  const SETTLE_EPS = 1e-4, SETTLE_FRAMES = 90;
 
   function reseed() {
+    quiet = 0;
     A.fill(1); B.fill(0);
     for (let s = 0; s < 12; s++) {
       const cx = 10 + (Math.random() * (W - 20)) | 0;
@@ -902,6 +925,7 @@ function chipRow(id, items) {
   }
 
   function step() {
+    let md = 0;   // largest single-cell change in B; ~0 means converged
     for (let y = 0; y < H; y++) {
       const yu = ((y - 1 + H) % H) * W, yd = ((y + 1) % H) * W, y0 = y * W;
       for (let x = 0; x < W; x++) {
@@ -916,10 +940,14 @@ function chipRow(id, items) {
                    - 5 * b;
         const abb = a * b * b;
         A2[i] = a + (DA * lapA * 0.2 - abb + feed * (1 - a)) * DT;
-        B2[i] = b + (DB * lapB * 0.2 + abb - (kill + feed) * b) * DT;
+        const nb = b + (DB * lapB * 0.2 + abb - (kill + feed) * b) * DT;
+        B2[i] = nb;
+        const d = nb > b ? nb - b : b - nb;
+        if (d > md) md = d;
       }
     }
     [A, A2] = [A2, A]; [B, B2] = [B2, B];
+    return md;
   }
 
   function draw() {
@@ -942,6 +970,7 @@ function chipRow(id, items) {
   // painting
   let painting = false;
   function paint(ev) {
+    quiet = 0;
     const p = pointerPos(cv, ev);
     const gx = (p.x / cv.width * W) | 0, gy = (p.y / cv.height * H) | 0;
     for (let y = -3; y <= 3; y++) for (let x = -3; x <= 3; x++) {
@@ -950,12 +979,16 @@ function chipRow(id, items) {
       B[yy * W + xx] = 1;
     }
   }
-  cv.addEventListener("pointerdown", e => { painting = true; paint(e); cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener("pointerdown", e => {
+    painting = true;
+    paint(e);
+    try { cv.setPointerCapture(e.pointerId); } catch (_) { /* no live pointer */ }
+  });
   cv.addEventListener("pointermove", e => { if (painting) paint(e); });
   cv.addEventListener("pointerup", () => painting = false);
   cv.addEventListener("pointercancel", () => painting = false);
 
-  const clearThen = fn => v => { if (chipsRef) chipsRef.clear(); fn(v); };
+  const clearThen = fn => v => { if (chipsRef) chipsRef.clear(); quiet = 0; fn(v); };
   const setF = bindPair("rd-f", "rd-f-num", clearThen(v => feed = v));
   const setK = bindPair("rd-k", "rd-k-num", clearThen(v => kill = v));
   document.getElementById("rd-reset").addEventListener("click", reseed);
@@ -975,8 +1008,11 @@ function chipRow(id, items) {
 
   reseed();
   loop(cv, () => {
-    for (let i = 0; i < 10; i++) step();
+    let md = 0;
+    for (let i = 0; i < 10; i++) md = step();
+    quiet = md < SETTLE_EPS ? quiet + 1 : 0;
     draw();
+    return quiet < SETTLE_FRAMES;
   });
 })();
 
@@ -985,7 +1021,7 @@ function chipRow(id, items) {
   const cv = document.getElementById("phy-canvas");
   const ctx = cv.getContext("2d");
   const W = cv.width, H = cv.height;
-  let angleDeg = 137.508, maxN = 900, n = 0;
+  let angleDeg = 137.508, maxN = 900, n = 0, dirty = true;
   let chipsRef = null;
 
   function draw() {
@@ -1015,10 +1051,12 @@ function chipRow(id, items) {
     if (chipsRef) chipsRef.clear();
     angleDeg = v;
     n = maxN;                      // when scrubbing, show the full head instantly
+    dirty = true;
   });
   bindPair("phy-n", "phy-n-num", v => {
     maxN = Math.round(v);
     n = maxN;
+    dirty = true;
   });
   document.getElementById("phy-replay").addEventListener("click", () => n = 0);
 
@@ -1036,8 +1074,10 @@ function chipRow(id, items) {
   ]);
 
   loop(cv, () => {
+    if (n >= maxN && !dirty) return false;   // head fully grown: nothing moves
     if (n < maxN) n = Math.min(maxN, n + Math.max(4, maxN / 128));
     draw();
+    dirty = false;
   });
 })();
 
@@ -1195,6 +1235,7 @@ function chipRow(id, items) {
         grid[((Math.random() * H) | 0) * W + ((Math.random() * W) | 0)]++;
       }
     }
+    return mode !== "still" && rate > 0;
   }
 
   /* One parallel toppling sweep (BTW rule). The abelian property makes the
@@ -1232,27 +1273,32 @@ function chipRow(id, items) {
     ctx.drawImage(off, 0, 0, cv.width, cv.height);
   }
 
-  bindPair("sp-rate", "sp-rate-num", v => rate = Math.round(v));
-  document.getElementById("sp-reset").addEventListener("click", () => grid.fill(0));
+  let dirty = true;
+  bindPair("sp-rate", "sp-rate-num", v => { rate = Math.round(v); dirty = true; });
+  document.getElementById("sp-reset").addEventListener("click", () => { grid.fill(0); dirty = true; });
   cv.addEventListener("pointerdown", e => {
     const p = pointerPos(cv, e);
     const gx = Math.min(W - 1, Math.max(0, (p.x / CELL) | 0));
     const gy = Math.min(H - 1, Math.max(0, (p.y / CELL) | 0));
     grid[gy * W + gx] += 500;
+    dirty = true;
   });
 
   chipRow("sp-chips", [
-    { label: "steady drip", apply: () => { mode = "drip"; } },
-    { label: "rain",        apply: () => { mode = "rain"; } },
+    { label: "steady drip", apply: () => { mode = "drip"; dirty = true; } },
+    { label: "rain",        apply: () => { mode = "rain"; dirty = true; } },
     { label: "one big pile", apply: () => {
-        mode = "still"; grid.fill(0); grid[CX] = 12000;
+        mode = "still"; grid.fill(0); grid[CX] = 12000; dirty = true;
       } },
   ]);
 
   loop(cv, () => {
-    addGrains();
-    for (let s = 0; s < 24; s++) { if (!sweep()) break; }
+    const added = addGrains();
+    let toppled = false;
+    for (let s = 0; s < 24; s++) { if (!sweep()) break; toppled = true; }
+    if (!added && !toppled && !dirty) return false;   // every cell below 4: settled
     draw();
+    dirty = false;
   });
 })();
 
@@ -1272,7 +1318,7 @@ function chipRow(id, items) {
     seaweed: { axiom: "X", rules: { X: "F[+X][-X]FX", F: "FF" },        angle: 25.7, depth: 6 },
   };
 
-  let word = "", angle = 25, grown = 0, total = 0;
+  let word = "", angle = 25, grown = 0, total = 0, dirty = true;
   let fit = { s: 4, x: W / 2, y: H };   // scale + origin from the measure pass
   let chipsRef = null;
 
@@ -1359,14 +1405,18 @@ function chipRow(id, items) {
     depth = Math.round(v);
     rebuild(sp, depth);
     grown = total;                 // adjustments show the finished plant
+    dirty = true;
   });
   const setAngle = bindPair("ls-angle", "ls-angle-num", v => {
     if (chipsRef) chipsRef.clear();
     angle = v;
     grown = total;
+    dirty = true;
     showRule(sp);
   });
   document.getElementById("ls-regrow").addEventListener("click", () => grown = 0);
+  // turning the breeze off redraws once in the neutral pose before settling
+  swayBox.addEventListener("change", () => dirty = true);
 
   function preset(name) {
     sp = SPECIES[name];
@@ -1386,10 +1436,13 @@ function chipRow(id, items) {
   document.querySelector("#ls-chips .chip").click();
 
   loop(cv, t => {
-    if (grown < total) grown = Math.min(total, grown + Math.max(20, total / 140));
+    const growing = grown < total;
+    if (!growing && !swayBox.checked && !dirty) return false;   // still air, full grown
+    if (growing) grown = Math.min(total, grown + Math.max(20, total / 140));
     ctx.fillStyle = "#10141d";
     ctx.fillRect(0, 0, W, H);
     turtle(grown, swayBox.checked ? t / 1400 : 0);
+    dirty = false;
   });
 })();
 </script>
