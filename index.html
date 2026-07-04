@@ -209,13 +209,22 @@
 
 <header>
   <div class="wrap">
-    <div class="eyebrow">Five small machines</div>
+    <div class="eyebrow">Small machines, big behavior</div>
     <h1>A Field Guide<br>to Emergence</h1>
     <p class="lede">
-      None of the systems below contains a picture of its result. Each is a
-      handful of arithmetic applied over and over — yet flocks form, spots grow,
-      spirals bloom, and chaos blossoms. The pattern lives <em>between</em> the rules,
-      not inside them. Everything here runs live; poke at it.
+      Emergence is what happens when many copies of a simple rule, each acting
+      only on local information, produce large-scale order that nobody wrote
+      down. A bird reacts to its nearest neighbors, and the whole flock turns
+      as one. A cell responds to the chemicals touching it, and the animal
+      grows stripes. In every exhibit below, the entire rule set fits in a
+      paragraph, and the text tells you what it is. The pattern is not stored
+      anywhere; it appears when the rule runs.
+    </p>
+    <p class="lede" style="margin-top:14px">
+      Everything runs live in your browser. Tap the presets to jump between
+      notable configurations, drag on the canvases, and edit any number
+      directly when you want an exact value. To save battery, each simulation
+      pauses itself while it is scrolled off screen.
     </p>
     <nav class="toc">
       <a href="#automaton"><span class="n">I</span>The Automaton</a>
@@ -234,15 +243,21 @@
     <div class="ex-sub">one dimension is enough &middot; Wolfram, 1983</div>
     <div class="prose">
       <p>
-        A row of cells, each on or off. Every tick, a cell looks at itself and its
-        two neighbors — eight possible situations — and a <strong>rule</strong> is just a table
-        saying what to do in each one. That's 256 possible universes, numbered 0 to 255.
+        The simplest possible world: a row of cells, each on or off. Every tick,
+        a cell looks at itself and its two neighbors. That is eight possible
+        situations, and a <strong>rule</strong> is just a table saying what to do in each
+        one. Eight yes/no entries means there are exactly 256 such rules, so
+        this entire family of universes can be numbered 0 to 255. Each row of
+        pixels below is one moment; time flows downward.
       </p>
       <p>
-        Most are boring. A few are not. <span class="rule-tag">Rule 30</span> is so
-        unpredictable it was used as a random number generator.
-        <span class="rule-tag">Rule 110</span> can, in principle, compute anything your
-        laptop can. All from a lookup table with eight entries.
+        Most rules are boring: they die out or freeze into stripes. A few are
+        not. <span class="rule-tag">Rule 30</span> boils into froth so unpredictable
+        that Mathematica used it for years as a random number generator.
+        <span class="rule-tag">Rule 110</span> can, in principle, compute anything
+        your laptop can; that was proven, not conjectured. The interesting
+        question is why these particular tables misbehave while their 250
+        siblings sit still. Nobody fully knows.
       </p>
     </div>
     <div class="stage">
@@ -264,14 +279,21 @@
     <div class="ex-sub">no bird is in charge &middot; Reynolds, 1986</div>
     <div class="prose">
       <p>
-        A starling murmuration has no choreographer. Each bird follows three
-        private urges: <span class="rule-tag">separate</span> — don't crowd your neighbors;
-        <span class="rule-tag">align</span> — fly the way they're flying;
-        <span class="rule-tag">cohere</span> — drift toward their center.
+        A starling murmuration has no choreographer and no leader. In 1986,
+        Craig Reynolds showed that three private urges per bird are enough:
+        <span class="rule-tag">separate</span> (don't crowd your neighbors),
+        <span class="rule-tag">align</span> (fly the way they're flying), and
+        <span class="rule-tag">cohere</span> (drift toward their center). Each
+        bird sees only the birds within a small radius. None of them knows the
+        shape of the flock; the shape is what the three rules look like from
+        far away.
       </p>
       <p>
-        No bird knows the shape of the flock. The flock is what the rules look
-        like from far away. Move your cursor into the pen — you're a hawk.
+        Rebalancing the urges changes the species. Strong cohesion collapses
+        the flock into a dense, wheeling ball. Remove alignment and it becomes
+        a cloud of midges, milling but never traveling. Your cursor or finger
+        is a hawk: birds flee it, and the escape wave that ripples outward is
+        the same one you see in films of real flocks under attack.
       </p>
     </div>
     <div class="stage">
@@ -293,15 +315,19 @@
     <div class="ex-sub">how the leopard gets its spots &middot; Turing, 1952</div>
     <div class="prose">
       <p>
-        Alan Turing's last great idea: two invisible chemicals spreading through
-        tissue — one feeding the reaction, one starving it — can paint spots,
-        stripes, and labyrinths onto skin. No gene stores the leopard's pattern;
-        the genes only tune two numbers, <strong>feed</strong> and <strong>kill</strong>, and the
-        mathematics does the rest.
+        In 1952, two years before his death, Alan Turing proposed that a pair
+        of chemicals spreading through tissue, one feeding a reaction and one
+        starving it, could paint spots, stripes, and labyrinths onto skin. No
+        gene stores the leopard's pattern. The genes only tune two numbers, a
+        <strong>feed</strong> rate and a <strong>kill</strong> rate, and the mathematics does the
+        rest. Biologists dismissed the idea for decades; it is now textbook.
       </p>
       <p>
-        This is the Gray–Scott model, running live. Draw on it with your cursor
-        to inject chemical, and watch the pattern negotiate the intrusion.
+        This is the Gray-Scott model, the standard modern form of Turing's
+        equations, computed live pixel by pixel. Every regime below differs
+        only in those two numbers, and the gap between coral, dividing cells,
+        and worms is a change in the third decimal place. Draw on the canvas
+        to inject chemical and watch the pattern absorb the intrusion.
       </p>
     </div>
     <div class="stage">
@@ -330,16 +356,19 @@
     <div class="ex-sub">the most irrational number in nature &middot; 137.508&deg;</div>
     <div class="prose">
       <p>
-        A sunflower places each new seed at a fixed angle from the last, a little
-        further out. That's the whole algorithm. But the choice of angle is
-        everything: pick a rational fraction of a turn and the seeds line up in
-        wasteful spokes. The plant needs an angle that <strong>never repeats</strong> —
-        and the hardest number to approximate with fractions is the golden ratio.
+        A sunflower places each new seed at a fixed angle from the previous
+        one, a little further from the center. That is the whole algorithm.
+        The choice of angle is everything: any rational fraction of a turn
+        eventually stacks seeds into wasteful spokes with gaps between them,
+        so the plant needs an angle that <strong>never repeats</strong>. The number
+        hardest to approximate with fractions is the golden ratio, and the
+        corresponding angle is 137.508 degrees.
       </p>
       <p>
-        Its angle is 137.508…°. Drag the slider even a tenth of a degree away
-        and watch the packing fall apart into spirals and spokes. Evolution found
-        a theorem in number theory and grew it in a field.
+        The presets show how sharp the optimum is. At exactly 137.5, three
+        thousandths of a degree short, the packing unravels at the rim. At a
+        rational angle like one seventh of a turn, the spokes appear instantly.
+        Evolution found a theorem in number theory and grew it in a field.
       </p>
     </div>
     <div class="stage">
@@ -361,15 +390,22 @@
     <div class="ex-sub">two hinges are enough for chaos &middot; sensitive dependence</div>
     <div class="prose">
       <p>
-        One pendulum is the physicist's favorite pet: tame, periodic, solved.
-        Hang a second pendulum from the tip of the first and you get one of the
-        simplest chaotic systems known. Below are <strong>two</strong> double pendulums,
-        released from angles that differ by one ten-thousandth of a degree.
+        One pendulum is the physicist's favorite pet: tame, periodic, solved
+        for centuries. Hang a second pendulum from the tip of the first and
+        you get one of the simplest systems known to be chaotic. Below are
+        <strong>two</strong> double pendulums drawn on top of each other, released from
+        angles that differ by an amount you can set. The default gap is one
+        ten-thousandth of a degree.
       </p>
       <p>
-        For a while they agree — then, suddenly and forever, they don't. This is
-        why weather forecasts decay: not missing physics, but the impossibility
-        of knowing today precisely enough to deserve next month.
+        For a while they agree so exactly that you can only see one pendulum.
+        Then, abruptly and permanently, they part. Try the gentle preset for
+        contrast: at small swings the identical system is orderly and the
+        twins never separate at all. Chaos is not randomness; it is the same
+        deterministic physics amplifying any error in your knowledge of the
+        starting point. This is also why weather forecasts decay. The physics
+        of the atmosphere is known, but today can never be measured precisely
+        enough to deserve next month.
       </p>
     </div>
     <div class="stage">
@@ -388,14 +424,16 @@
     <div class="glyph">&sect;</div>
     <p>
       Everything on this page is one HTML file with no dependencies, no build
-      step, and no images — every pattern you saw was computed in your browser
+      step, and no images. Every pattern you saw was computed in your browser
       while you watched. View source; the machines are smaller than you'd think.
     </p>
     <p style="margin-top:12px">
       Further reading: Wolfram, <i>A New Kind of Science</i> &middot;
       Reynolds, <i>Flocks, Herds, and Schools</i> (1987) &middot;
       Turing, <i>The Chemical Basis of Morphogenesis</i> (1952) &middot;
-      Vogel, <i>A Better Way to Construct the Sunflower Head</i> (1979).
+      Vogel, <i>A Better Way to Construct the Sunflower Head</i> (1979) &middot;
+      Bak, Tang &amp; Wiesenfeld, <i>Self-Organized Criticality</i> (1987) &middot;
+      Prusinkiewicz &amp; Lindenmayer, <i>The Algorithmic Beauty of Plants</i> (1990).
     </p>
   </div>
 </footer>
