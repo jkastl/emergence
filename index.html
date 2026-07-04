@@ -121,18 +121,56 @@
   }
 
   .stage {
+    position: relative;
     background: var(--panel);
     border: 1px solid var(--panel-edge);
     border-radius: 12px;
     overflow: hidden;
   }
+  .status-badge {
+    position: absolute;
+    top: 10px; right: 10px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: .08em;
+    color: var(--ink-faint);
+    background: rgba(11,14,20,.72);
+    border: 1px solid var(--panel-edge);
+    border-radius: 999px;
+    padding: 3px 10px;
+    pointer-events: none;
+  }
+  .status-badge::before { content: "\25CF\00a0"; opacity: .8; }
+  .status-badge.live { color: var(--cyan); border-color: rgba(111,211,199,.3); }
+  .pause-btn { min-width: 6.4em; text-align: center; }
   .stage canvas {
     display: block;
     width: 100%;
     height: auto;
     cursor: crosshair;
-    touch-action: none;
+    touch-action: pan-y; /* let the page scroll over canvases on touch screens */
   }
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 18px;
+    border-top: 1px solid var(--panel-edge);
+  }
+  .chips + .controls { border-top: none; padding-top: 2px; }
+  .chip {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-dim);
+    background: transparent;
+    border: 1px solid var(--panel-edge);
+    border-radius: 999px;
+    padding: 6px 13px;
+    cursor: pointer;
+    transition: border-color .15s, color .15s;
+  }
+  .chip:hover { border-color: var(--cyan); color: var(--cyan); }
+  .chip.active { border-color: var(--amber); color: var(--amber); }
   .controls {
     display: flex;
     flex-wrap: wrap;
@@ -167,7 +205,7 @@
     background: var(--amber);
     border: 2px solid var(--bg);
   }
-  button, select {
+  button {
     font-family: var(--mono);
     font-size: 12.5px;
     color: var(--ink);
@@ -178,8 +216,31 @@
     cursor: pointer;
     transition: border-color .15s, color .15s;
   }
-  button:hover, select:hover { border-color: var(--amber); color: var(--amber); }
-  select { background: var(--panel); }
+  button:hover { border-color: var(--amber); color: var(--amber); }
+  input[type="number"] {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--cyan);
+    background: rgba(255,255,255,.03);
+    border: 1px solid var(--panel-edge);
+    border-radius: 6px;
+    padding: 4px 6px;
+    width: 5.8em;
+  }
+  input[type="number"]:focus { outline: none; border-color: var(--amber); }
+  input[type="checkbox"] { accent-color: var(--amber); width: 16px; height: 16px; }
+
+  /* touch screens: bigger targets, no focus-zoom on iOS (16px inputs) */
+  @media (pointer: coarse) {
+    .chip { padding: 10px 16px; font-size: 13px; }
+    button { padding: 12px 16px; font-size: 13px; }
+    input[type="number"] { font-size: 16px; padding: 8px 8px; width: 5.4em; }
+    input[type="range"] { height: 6px; min-width: 150px; }
+    input[type="range"]::-webkit-slider-thumb { width: 22px; height: 22px; }
+    input[type="range"]::-moz-range-thumb { width: 20px; height: 20px; }
+    input[type="checkbox"] { width: 22px; height: 22px; }
+    .controls { gap: 14px 20px; }
+  }
 
   /* ---------- footer ---------- */
   footer {
@@ -209,13 +270,23 @@
 
 <header>
   <div class="wrap">
-    <div class="eyebrow">Five small machines</div>
+    <div class="eyebrow">Small machines, big behavior</div>
     <h1>A Field Guide<br>to Emergence</h1>
     <p class="lede">
-      None of the systems below contains a picture of its result. Each is a
-      handful of arithmetic applied over and over — yet flocks form, spots grow,
-      spirals bloom, and chaos blossoms. The pattern lives <em>between</em> the rules,
-      not inside them. Everything here runs live; poke at it.
+      Emergence is what happens when many copies of a simple rule, each acting
+      only on local information, produce large-scale order that nobody wrote
+      down. A bird reacts to its nearest neighbors, and the whole flock turns
+      as one. A cell responds to the chemicals touching it, and the animal
+      grows stripes. In every exhibit below, the entire rule set fits in a
+      paragraph, and the text tells you what it is. The pattern is not stored
+      anywhere; it appears when the rule runs.
+    </p>
+    <p class="lede" style="margin-top:14px">
+      Everything runs live in your browser. Tap the presets to jump between
+      notable configurations, drag on the canvases, and edit any number
+      directly when you want an exact value. To save battery, each simulation
+      sleeps while it is scrolled off screen, and stops computing once its
+      picture has settled; touching any of its controls wakes it.
     </p>
     <nav class="toc">
       <a href="#automaton"><span class="n">I</span>The Automaton</a>
@@ -223,6 +294,8 @@
       <a href="#chemistry"><span class="n">III</span>The Chemistry</a>
       <a href="#sunflower"><span class="n">IV</span>The Sunflower</a>
       <a href="#pendulum"><span class="n">V</span>The Pendulum</a>
+      <a href="#sandpile"><span class="n">VI</span>The Sandpile</a>
+      <a href="#tree"><span class="n">VII</span>The Tree</a>
     </nav>
   </div>
 </header>
@@ -234,24 +307,31 @@
     <div class="ex-sub">one dimension is enough &middot; Wolfram, 1983</div>
     <div class="prose">
       <p>
-        A row of cells, each on or off. Every tick, a cell looks at itself and its
-        two neighbors — eight possible situations — and a <strong>rule</strong> is just a table
-        saying what to do in each one. That's 256 possible universes, numbered 0 to 255.
+        The simplest possible world: a row of cells, each on or off. Every tick,
+        a cell looks at itself and its two neighbors. That is eight possible
+        situations, and a <strong>rule</strong> is just a table saying what to do in each
+        one. Eight yes/no entries means there are exactly 256 such rules, so
+        this entire family of universes can be numbered 0 to 255. Each row of
+        pixels below is one moment; time flows downward.
       </p>
       <p>
-        Most are boring. A few are not. <span class="rule-tag">Rule 30</span> is so
-        unpredictable it was used as a random number generator.
-        <span class="rule-tag">Rule 110</span> can, in principle, compute anything your
-        laptop can. All from a lookup table with eight entries.
+        Most rules are boring: they die out or freeze into stripes. A few are
+        not. <span class="rule-tag">Rule 30</span> boils into froth so unpredictable
+        that Mathematica used it for years as a random number generator.
+        <span class="rule-tag">Rule 110</span> can, in principle, compute anything
+        your laptop can; that was proven, not conjectured. The interesting
+        question is why these particular tables misbehave while their 250
+        siblings sit still. Nobody fully knows.
       </p>
     </div>
     <div class="stage">
       <canvas id="ca-canvas" width="880" height="440"></canvas>
+      <div class="chips" id="ca-chips"></div>
       <div class="controls">
-        <label>rule <input type="range" id="ca-rule" min="0" max="255" value="30" step="1"> <span class="val" id="ca-rule-val">30</span></label>
+        <label>rule <input type="range" id="ca-rule" min="0" max="255" value="30" step="1"> <input type="number" id="ca-rule-num" min="0" max="255" step="1" value="30" aria-label="rule number"></label>
+        <label>speed <input type="range" id="ca-speed" min="1" max="8" value="2" step="1"> <input type="number" id="ca-speed-num" min="1" max="8" step="1" value="2" aria-label="generations per frame"></label>
         <button id="ca-seed">single seed</button>
         <button id="ca-random">random seed</button>
-        <span class="hint">try 30, 90, 110, 184, 73</span>
       </div>
     </div>
   </div>
@@ -264,23 +344,32 @@
     <div class="ex-sub">no bird is in charge &middot; Reynolds, 1986</div>
     <div class="prose">
       <p>
-        A starling murmuration has no choreographer. Each bird follows three
-        private urges: <span class="rule-tag">separate</span> — don't crowd your neighbors;
-        <span class="rule-tag">align</span> — fly the way they're flying;
-        <span class="rule-tag">cohere</span> — drift toward their center.
+        A starling murmuration has no choreographer and no leader. In 1986,
+        Craig Reynolds showed that three private urges per bird are enough:
+        <span class="rule-tag">separate</span> (don't crowd your neighbors),
+        <span class="rule-tag">align</span> (fly the way they're flying), and
+        <span class="rule-tag">cohere</span> (drift toward their center). Each
+        bird sees only the birds within a small radius. None of them knows the
+        shape of the flock; the shape is what the three rules look like from
+        far away.
       </p>
       <p>
-        No bird knows the shape of the flock. The flock is what the rules look
-        like from far away. Move your cursor into the pen — you're a hawk.
+        Rebalancing the urges changes the species. Strong cohesion collapses
+        the flock into a dense, wheeling ball. Remove alignment and it becomes
+        a cloud of midges, milling but never traveling. Your cursor or finger
+        is a hawk: birds flee it, and the escape wave that ripples outward is
+        the same one you see in films of real flocks under attack.
       </p>
     </div>
     <div class="stage">
       <canvas id="boids-canvas" width="880" height="480"></canvas>
+      <div class="chips" id="b-chips"></div>
       <div class="controls">
-        <label>separate <input type="range" id="b-sep" min="0" max="200" value="100"></label>
-        <label>align <input type="range" id="b-ali" min="0" max="200" value="100"></label>
-        <label>cohere <input type="range" id="b-coh" min="0" max="200" value="100"></label>
-        <span class="hint">cursor = predator &middot; try cohere at max</span>
+        <label>separate <input type="range" id="b-sep" min="0" max="200" value="100"> <input type="number" id="b-sep-num" min="0" max="200" step="1" value="100" aria-label="separation strength"></label>
+        <label>align <input type="range" id="b-ali" min="0" max="200" value="100"> <input type="number" id="b-ali-num" min="0" max="200" step="1" value="100" aria-label="alignment strength"></label>
+        <label>cohere <input type="range" id="b-coh" min="0" max="200" value="100"> <input type="number" id="b-coh-num" min="0" max="200" step="1" value="100" aria-label="cohesion strength"></label>
+        <label>birds <input type="range" id="b-n" min="20" max="250" value="130" step="5"> <input type="number" id="b-n-num" min="1" max="400" step="1" value="130" aria-label="number of birds"></label>
+        <span class="hint">cursor or finger = predator</span>
       </div>
     </div>
   </div>
@@ -293,29 +382,27 @@
     <div class="ex-sub">how the leopard gets its spots &middot; Turing, 1952</div>
     <div class="prose">
       <p>
-        Alan Turing's last great idea: two invisible chemicals spreading through
-        tissue — one feeding the reaction, one starving it — can paint spots,
-        stripes, and labyrinths onto skin. No gene stores the leopard's pattern;
-        the genes only tune two numbers, <strong>feed</strong> and <strong>kill</strong>, and the
-        mathematics does the rest.
+        In 1952, two years before his death, Alan Turing proposed that a pair
+        of chemicals spreading through tissue, one feeding a reaction and one
+        starving it, could paint spots, stripes, and labyrinths onto skin. No
+        gene stores the leopard's pattern. The genes only tune two numbers, a
+        <strong>feed</strong> rate and a <strong>kill</strong> rate, and the mathematics does the
+        rest. Biologists dismissed the idea for decades; it is now textbook.
       </p>
       <p>
-        This is the Gray–Scott model, running live. Draw on it with your cursor
-        to inject chemical, and watch the pattern negotiate the intrusion.
+        This is the Gray-Scott model, the standard modern form of Turing's
+        equations, computed live pixel by pixel. Every regime below differs
+        only in those two numbers, and the gap between coral, dividing cells,
+        and worms is a change in the third decimal place. Draw on the canvas
+        to inject chemical and watch the pattern absorb the intrusion.
       </p>
     </div>
     <div class="stage">
       <canvas id="rd-canvas" width="880" height="520"></canvas>
+      <div class="chips" id="rd-chips"></div>
       <div class="controls">
-        <label>regime
-          <select id="rd-preset">
-            <option value="0.0545,0.0620" selected>coral</option>
-            <option value="0.0367,0.0649">mitosis</option>
-            <option value="0.0780,0.0610">worms</option>
-            <option value="0.0290,0.0570">solitons</option>
-            <option value="0.0620,0.0609">labyrinth</option>
-          </select>
-        </label>
+        <label>feed <input type="range" id="rd-f" min="0.010" max="0.090" step="0.0005" value="0.0545"> <input type="number" id="rd-f-num" min="0" max="0.12" step="0.0005" value="0.0545" aria-label="feed rate"></label>
+        <label>kill <input type="range" id="rd-k" min="0.040" max="0.070" step="0.0005" value="0.062"> <input type="number" id="rd-k-num" min="0" max="0.08" step="0.0005" value="0.062" aria-label="kill rate"></label>
         <button id="rd-reset">reseed</button>
         <span class="hint">drag to paint chemical B</span>
       </div>
@@ -330,25 +417,29 @@
     <div class="ex-sub">the most irrational number in nature &middot; 137.508&deg;</div>
     <div class="prose">
       <p>
-        A sunflower places each new seed at a fixed angle from the last, a little
-        further out. That's the whole algorithm. But the choice of angle is
-        everything: pick a rational fraction of a turn and the seeds line up in
-        wasteful spokes. The plant needs an angle that <strong>never repeats</strong> —
-        and the hardest number to approximate with fractions is the golden ratio.
+        A sunflower places each new seed at a fixed angle from the previous
+        one, a little further from the center. That is the whole algorithm.
+        The choice of angle is everything: any rational fraction of a turn
+        eventually stacks seeds into wasteful spokes with gaps between them,
+        so the plant needs an angle that <strong>never repeats</strong>. The number
+        hardest to approximate with fractions is the golden ratio, and the
+        corresponding angle is 137.508 degrees.
       </p>
       <p>
-        Its angle is 137.508…°. Drag the slider even a tenth of a degree away
-        and watch the packing fall apart into spirals and spokes. Evolution found
-        a theorem in number theory and grew it in a field.
+        The presets show how sharp the optimum is. At exactly 137.5, three
+        thousandths of a degree short, the packing unravels at the rim. At a
+        rational angle like one seventh of a turn, the spokes appear instantly.
+        Evolution found a theorem in number theory and grew it in a field.
       </p>
     </div>
     <div class="stage">
       <canvas id="phy-canvas" width="880" height="560"></canvas>
+      <div class="chips" id="phy-chips"></div>
       <div class="controls">
-        <label>angle <input type="range" id="phy-angle" min="130" max="145" value="137.508" step="0.004"> <span class="val" id="phy-angle-val">137.508&deg;</span></label>
-        <button id="phy-golden">&phi; golden</button>
+        <label>angle&deg; <input type="range" id="phy-angle" min="0" max="360" value="137.508" step="0.02"> <input type="number" id="phy-angle-num" min="0" max="360" step="0.001" value="137.508" aria-label="divergence angle in degrees"></label>
+        <label>seeds <input type="range" id="phy-n" min="100" max="2000" value="900" step="20"> <input type="number" id="phy-n-num" min="50" max="3000" step="10" value="900" aria-label="seed count"></label>
         <button id="phy-replay">replay growth</button>
-        <span class="hint">try exactly 137.5 vs 137.508</span>
+        <span class="hint">scrub the angle slowly; spokes flash at every fraction</span>
       </div>
     </div>
   </div>
@@ -361,23 +452,108 @@
     <div class="ex-sub">two hinges are enough for chaos &middot; sensitive dependence</div>
     <div class="prose">
       <p>
-        One pendulum is the physicist's favorite pet: tame, periodic, solved.
-        Hang a second pendulum from the tip of the first and you get one of the
-        simplest chaotic systems known. Below are <strong>two</strong> double pendulums,
-        released from angles that differ by one ten-thousandth of a degree.
+        One pendulum is the physicist's favorite pet: tame, periodic, solved
+        for centuries. Hang a second pendulum from the tip of the first and
+        you get one of the simplest systems known to be chaotic. Below are
+        <strong>two</strong> double pendulums drawn on top of each other, released from
+        angles that differ by an amount you can set. The default gap is one
+        ten-thousandth of a degree.
       </p>
       <p>
-        For a while they agree — then, suddenly and forever, they don't. This is
-        why weather forecasts decay: not missing physics, but the impossibility
-        of knowing today precisely enough to deserve next month.
+        For a while they agree so exactly that you can only see one pendulum.
+        Then, abruptly and permanently, they part. Try the gentle preset for
+        contrast: at small swings the identical system is orderly and the
+        twins never separate at all. Chaos is not randomness; it is the same
+        deterministic physics amplifying any error in your knowledge of the
+        starting point. This is also why weather forecasts decay. The physics
+        of the atmosphere is known, but today can never be measured precisely
+        enough to deserve next month.
       </p>
     </div>
     <div class="stage">
       <canvas id="dp-canvas" width="880" height="520"></canvas>
+      <div class="chips" id="dp-chips"></div>
       <div class="controls">
         <button id="dp-drop">drop again</button>
-        <label style="user-select:none"><input type="checkbox" id="dp-trails" checked style="accent-color:var(--amber)"> trails</label>
-        <span class="hint">amber &amp; teal started 0.0001&deg; apart &middot; divergence: <span class="val" id="dp-div">0.0000</span></span>
+        <label>&Delta; start&deg; <input type="number" id="dp-delta" min="0" max="45" step="0.0001" value="0.0001" aria-label="initial angle gap in degrees"></label>
+        <label>gravity <input type="range" id="dp-g" min="2" max="25" step="0.1" value="9.8"> <input type="number" id="dp-g-num" min="0.5" max="50" step="0.1" value="9.8" aria-label="gravity"></label>
+        <label style="user-select:none"><input type="checkbox" id="dp-trails" checked> trails</label>
+        <span class="hint">divergence <span class="val" id="dp-div">0.0000</span> rad</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ VI. ABELIAN SANDPILE ============ -->
+<section class="exhibit" id="sandpile">
+  <div class="wrap">
+    <div class="ex-head"><span class="ex-num">VI.</span><h2>The Sandpile</h2></div>
+    <div class="ex-sub">criticality organizes itself &middot; Bak, Tang &amp; Wiesenfeld, 1987</div>
+    <div class="prose">
+      <p>
+        Drop grains of sand one at a time onto a grid. A cell holding four
+        grains <strong>topples</strong>, giving one grain to each of its four neighbors.
+        A neighbor pushed to four topples in turn, and so on until everything
+        settles: sometimes after one topple, sometimes after thousands. Grains
+        that fall off the edge are gone. That is the entire model.
+      </p>
+      <p>
+        Left alone, the pile tunes itself to the edge of stability, where the
+        next single grain can do almost nothing or almost anything, and
+        avalanche sizes follow a power law, the same statistical signature as
+        earthquakes and forest fires. The physicists who found this called it
+        self-organized criticality; nobody steers the pile there, falling sand
+        is enough. The colors count grains (0, 1, 2, 3), toppling cells flash
+        rose, and the mandala that forms under a steady central drip is stored
+        nowhere. Tap the canvas to pour sand wherever you like.
+      </p>
+    </div>
+    <div class="stage">
+      <canvas id="sp-canvas" width="880" height="520"></canvas>
+      <div class="chips" id="sp-chips"></div>
+      <div class="controls">
+        <label>grains/tick <input type="range" id="sp-rate" min="0" max="50" value="3" step="1"> <input type="number" id="sp-rate-num" min="0" max="200" step="1" value="3" aria-label="grains added per tick"></label>
+        <button id="sp-reset">clear table</button>
+        <span class="hint">tap to pour 500 grains</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ VII. L-SYSTEM PLANTS ============ -->
+<section class="exhibit" id="tree">
+  <div class="wrap">
+    <div class="ex-head"><span class="ex-num">VII.</span><h2>The Tree</h2></div>
+    <div class="ex-sub">a grammar that grows &middot; Lindenmayer, 1968</div>
+    <div class="prose">
+      <p>
+        The botanist Aristid Lindenmayer wrote grammars for how plants grow:
+        start from a short word and apply the same substitution to every
+        letter, generation after generation. A turtle then reads the final
+        word as instructions, drawing a segment for <span class="rule-tag">F</span>,
+        turning for <span class="rule-tag">+</span> and <span class="rule-tag">&minus;</span>,
+        and using <span class="rule-tag">[</span> and <span class="rule-tag">]</span>
+        to remember and return to a branching point. The full rule for each
+        plant below is printed under its canvas, and each is one line long.
+      </p>
+      <p>
+        Nothing in that line says fern. The overall shape, the taper, the way
+        fronds curl, all of it is the rewriting rule echoing through six
+        generations of itself. Change the turning angle by a few degrees and
+        you get a different species, which is roughly what mutations do to
+        real developmental programs. This last exhibit is the closest to an
+        actual organism: a plant is a program that runs on sunlight.
+      </p>
+    </div>
+    <div class="stage">
+      <canvas id="ls-canvas" width="880" height="560"></canvas>
+      <div class="chips" id="ls-chips"></div>
+      <div class="controls">
+        <label>generations <input type="range" id="ls-depth" min="1" max="7" value="6" step="1"> <input type="number" id="ls-depth-num" min="1" max="7" step="1" value="6" aria-label="rewriting generations"></label>
+        <label>angle&deg; <input type="range" id="ls-angle" min="5" max="45" value="25" step="0.1"> <input type="number" id="ls-angle-num" min="0" max="90" step="0.1" value="25" aria-label="turning angle in degrees"></label>
+        <label style="user-select:none"><input type="checkbox" id="ls-sway" checked> breeze</label>
+        <button id="ls-regrow">regrow</button>
+        <span class="hint" id="ls-rule"></span>
       </div>
     </div>
   </div>
@@ -388,35 +564,93 @@
     <div class="glyph">&sect;</div>
     <p>
       Everything on this page is one HTML file with no dependencies, no build
-      step, and no images — every pattern you saw was computed in your browser
+      step, and no images. Every pattern you saw was computed in your browser
       while you watched. View source; the machines are smaller than you'd think.
     </p>
     <p style="margin-top:12px">
       Further reading: Wolfram, <i>A New Kind of Science</i> &middot;
       Reynolds, <i>Flocks, Herds, and Schools</i> (1987) &middot;
       Turing, <i>The Chemical Basis of Morphogenesis</i> (1952) &middot;
-      Vogel, <i>A Better Way to Construct the Sunflower Head</i> (1979).
+      Vogel, <i>A Better Way to Construct the Sunflower Head</i> (1979) &middot;
+      Bak, Tang &amp; Wiesenfeld, <i>Self-Organized Criticality</i> (1987) &middot;
+      Prusinkiewicz &amp; Lindenmayer, <i>The Algorithmic Beauty of Plants</i> (1990).
     </p>
   </div>
 </footer>
 
 <script>
 "use strict";
-/* Shared: run an exhibit's frame loop only while it's on screen. */
+/* Shared: each exhibit animates only while its canvas is on screen, and can
+   also be paused by hand. The badge in the canvas corner shows which state
+   it is in. Users who ask the OS for reduced motion get formed, still
+   pictures instead of animation, with a play button to opt back in. */
+const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const running = new Map();
 const io = new IntersectionObserver(entries => {
   for (const e of entries) {
     const r = running.get(e.target);
-    if (r) r.visible = e.isIntersecting;
+    if (r) { r.visible = e.isIntersecting; r.update(); }
   }
 }, { threshold: 0.05 });
 
 function loop(canvas, frame) {
-  const state = { visible: false };
+  const stage = canvas.closest(".stage");
+  const state = { visible: false, paused: REDUCED, idle: false, update };
   running.set(canvas, state);
   io.observe(canvas);
+
+  const badge = document.createElement("div");
+  badge.className = "status-badge";
+  stage.appendChild(badge);
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "pause-btn";
+  const controls = stage.querySelector(".controls");
+  controls.insertBefore(btn, controls.firstChild);
+  btn.addEventListener("click", e => {
+    e.stopPropagation();
+    state.paused = !state.paused;
+    update();
+  });
+
+  // touching any control of a paused or settled exhibit wakes it back up
+  const wake = e => {
+    if (e.target === btn) return;
+    if (state.paused || state.idle) {
+      state.paused = false;
+      state.idle = false;
+      update();
+    }
+  };
+  stage.addEventListener("click", wake);
+  stage.addEventListener("input", wake);
+  stage.addEventListener("pointerdown", wake);
+
+  function update() {
+    btn.innerHTML = state.paused ? "&#9655; play" : "&#10073;&#10073; pause";
+    badge.textContent = !state.visible ? "asleep off screen"
+                      : state.paused ? "paused"
+                      : state.idle ? "settled" : "live";
+    badge.classList.toggle("live", state.visible && !state.paused && !state.idle);
+  }
+  update();
+
+  let warmed = false;
   (function tick(t) {
-    if (state.visible) frame(t);
+    if (state.visible) {
+      if (!warmed) {
+        warmed = true;
+        // reduced motion: run the simulation forward without animating it
+        if (REDUCED) for (let i = 0; i < 120; i++) frame(t + i * 50);
+      }
+      // a frame that returns false is declaring its picture finished;
+      // stop computing until something wakes the exhibit
+      if (!state.paused && !state.idle && frame(t) === false) {
+        state.idle = true;
+        update();
+      }
+    }
     requestAnimationFrame(tick);
   })(0);
 }
@@ -429,15 +663,50 @@ function pointerPos(canvas, ev) {
   };
 }
 
+/* Pair a slider with an editable number box. Returns a programmatic setter
+   (used by presets) that updates both inputs and calls apply(value). */
+function bindPair(rangeId, numId, apply) {
+  const r = document.getElementById(rangeId);
+  const n = document.getElementById(numId);
+  const set = v => {
+    v = +v;
+    if (!isFinite(v)) v = +n.min || 0;
+    v = Math.min(+n.max, Math.max(+n.min, v));
+    r.value = v; n.value = v;
+    apply(v);
+  };
+  r.addEventListener("input", () => { n.value = r.value; apply(+r.value); });
+  n.addEventListener("change", () => set(n.value));
+  return set;
+}
+
+/* Build a row of preset chips. Clicking a chip runs its apply() and marks it
+   active; call .clear() when a manual adjustment invalidates the preset. */
+function chipRow(id, items) {
+  const el = document.getElementById(id);
+  const btns = items.map(it => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "chip";
+    b.innerHTML = it.label;
+    b.addEventListener("click", () => {
+      it.apply();
+      btns.forEach(x => x.classList.toggle("active", x === b));
+    });
+    el.appendChild(b);
+    return b;
+  });
+  if (btns.length) btns[0].classList.add("active");
+  return { clear: () => btns.forEach(x => x.classList.remove("active")) };
+}
+
 /* ============ I. Elementary cellular automaton ============ */
 (() => {
   const cv = document.getElementById("ca-canvas");
   const ctx = cv.getContext("2d");
   const CELL = 4, W = cv.width / CELL, H = cv.height / CELL;
-  let rule = 30, row, history, generation;
-
-  const ruleSlider = document.getElementById("ca-rule");
-  const ruleVal = document.getElementById("ca-rule-val");
+  let rule = 30, speed = 2, row, history, generation, quiet;
+  let chipsRef = null;
 
   function seed(random) {
     row = new Uint8Array(W);
@@ -445,6 +714,7 @@ function pointerPos(canvas, ev) {
     else row[W >> 1] = 1;
     history = [];
     generation = 0;
+    quiet = 0;
   }
 
   function step() {
@@ -453,6 +723,11 @@ function pointerPos(canvas, ev) {
       const l = row[(i - 1 + W) % W], c = row[i], r = row[(i + 1) % W];
       next[i] = (rule >> ((l << 2) | (c << 1) | r)) & 1;
     }
+    // a rule that has frozen scrolls identical rows; once they fill the
+    // canvas there is nothing left to watch
+    let same = true;
+    for (let i = 0; i < W; i++) if (next[i] !== row[i]) { same = false; break; }
+    quiet = same ? quiet + 1 : 0;
     history.push(row);
     if (history.length > H) history.shift();
     row = next;
@@ -473,19 +748,38 @@ function pointerPos(canvas, ev) {
     }
   }
 
-  ruleSlider.addEventListener("input", () => {
-    rule = +ruleSlider.value;
-    ruleVal.textContent = rule;
+  const setRule = bindPair("ca-rule", "ca-rule-num", v => {
+    if (chipsRef) chipsRef.clear();
+    rule = Math.round(v);
     seed(false);
   });
+  bindPair("ca-speed", "ca-speed-num", v => speed = Math.round(v));
   document.getElementById("ca-seed").addEventListener("click", () => seed(false));
   document.getElementById("ca-random").addEventListener("click", () => seed(true));
   cv.addEventListener("pointerdown", () => seed(Math.random() < 0.5));
 
+  function preset(r, random) {
+    setRule(r);          // clears chips; chipRow re-marks the clicked one
+    seed(random);
+  }
+  chipsRef = chipRow("ca-chips", [
+    { label: "30 &middot; chaos",     apply: () => preset(30, false) },
+    { label: "90 &middot; fractal",   apply: () => preset(90, false) },
+    { label: "110 &middot; computer", apply: () => preset(110, true) },
+    { label: "184 &middot; traffic",  apply: () => preset(184, true) },
+    { label: "73 &middot; membranes", apply: () => preset(73, true) },
+    { label: "150 &middot; lace",     apply: () => preset(150, false) },
+  ]);
+
   seed(false);
   let last = 0;
   loop(cv, t => {
-    if (t - last > 33) { step(); step(); draw(); last = t; }
+    if (quiet > H + 4) return false;
+    if (t - last > 33) {
+      for (let i = 0; i < speed; i++) step();
+      draw();
+      last = t;
+    }
   });
 })();
 
@@ -493,30 +787,55 @@ function pointerPos(canvas, ev) {
 (() => {
   const cv = document.getElementById("boids-canvas");
   const ctx = cv.getContext("2d");
-  const W = cv.width, H = cv.height, N = 130;
+  const W = cv.width, H = cv.height;
+  const p = { sep: 100, ali: 100, coh: 100 };
   const boids = [];
-  for (let i = 0; i < N; i++) {
+  let chipsRef = null;
+
+  function addBoid() {
     const a = Math.random() * Math.PI * 2;
     boids.push({
       x: Math.random() * W, y: Math.random() * H,
       vx: Math.cos(a) * 2, vy: Math.sin(a) * 2
     });
   }
+  function setCount(n) {
+    n = Math.round(n);
+    while (boids.length < n) addBoid();
+    boids.length = n;
+  }
+  setCount(130);
+
   const mouse = { x: -1e4, y: -1e4 };
   cv.addEventListener("pointermove", e => Object.assign(mouse, pointerPos(cv, e)));
+  cv.addEventListener("pointerdown", e => Object.assign(mouse, pointerPos(cv, e)));
   cv.addEventListener("pointerleave", () => { mouse.x = -1e4; mouse.y = -1e4; });
+  cv.addEventListener("pointerup", () => { mouse.x = -1e4; mouse.y = -1e4; });
 
-  const sepS = document.getElementById("b-sep");
-  const aliS = document.getElementById("b-ali");
-  const cohS = document.getElementById("b-coh");
+  const clearThen = fn => v => { if (chipsRef) chipsRef.clear(); fn(v); };
+  const setSep = bindPair("b-sep", "b-sep-num", clearThen(v => p.sep = v));
+  const setAli = bindPair("b-ali", "b-ali-num", clearThen(v => p.ali = v));
+  const setCoh = bindPair("b-coh", "b-coh-num", clearThen(v => p.coh = v));
+  const setN   = bindPair("b-n",   "b-n-num",   clearThen(setCount));
+
+  function preset(sep, ali, coh, n) {
+    setSep(sep); setAli(ali); setCoh(coh); setN(n);
+  }
+  chipsRef = chipRow("b-chips", [
+    { label: "murmuration",  apply: () => preset(100, 100, 100, 130) },
+    { label: "tight school", apply: () => preset(60, 180, 160, 180) },
+    { label: "midge cloud",  apply: () => preset(140, 5, 90, 120) },
+    { label: "one dense ball", apply: () => preset(40, 60, 200, 160) },
+    { label: "loners",       apply: () => preset(200, 0, 0, 60) },
+  ]);
 
   const VIEW = 62, VIEW2 = VIEW * VIEW, SEP = 24, SEP2 = SEP * SEP;
   const MAXSPD = 3.4, MINSPD = 1.6;
 
   function stepBoids() {
-    const kSep = sepS.value / 100 * 0.09;
-    const kAli = aliS.value / 100 * 0.05;
-    const kCoh = cohS.value / 100 * 0.0035;
+    const kSep = p.sep / 100 * 0.09;
+    const kAli = p.ali / 100 * 0.05;
+    const kCoh = p.coh / 100 * 0.0035;
     for (const b of boids) {
       let sx = 0, sy = 0, ax = 0, ay = 0, cx = 0, cy = 0, n = 0;
       for (const o of boids) {
@@ -589,9 +908,12 @@ function pointerPos(canvas, ev) {
   let A = new Float32Array(W * H), B = new Float32Array(W * H);
   let A2 = new Float32Array(W * H), B2 = new Float32Array(W * H);
   let feed = 0.0545, kill = 0.0620;
+  let chipsRef = null, quiet = 0;
   const DA = 1.0, DB = 0.5, DT = 1.0;
+  const SETTLE_EPS = 1e-4, SETTLE_FRAMES = 90;
 
   function reseed() {
+    quiet = 0;
     A.fill(1); B.fill(0);
     for (let s = 0; s < 12; s++) {
       const cx = 10 + (Math.random() * (W - 20)) | 0;
@@ -603,6 +925,7 @@ function pointerPos(canvas, ev) {
   }
 
   function step() {
+    let md = 0;   // largest single-cell change in B; ~0 means converged
     for (let y = 0; y < H; y++) {
       const yu = ((y - 1 + H) % H) * W, yd = ((y + 1) % H) * W, y0 = y * W;
       for (let x = 0; x < W; x++) {
@@ -617,10 +940,14 @@ function pointerPos(canvas, ev) {
                    - 5 * b;
         const abb = a * b * b;
         A2[i] = a + (DA * lapA * 0.2 - abb + feed * (1 - a)) * DT;
-        B2[i] = b + (DB * lapB * 0.2 + abb - (kill + feed) * b) * DT;
+        const nb = b + (DB * lapB * 0.2 + abb - (kill + feed) * b) * DT;
+        B2[i] = nb;
+        const d = nb > b ? nb - b : b - nb;
+        if (d > md) md = d;
       }
     }
     [A, A2] = [A2, A]; [B, B2] = [B2, B];
+    return md;
   }
 
   function draw() {
@@ -643,6 +970,7 @@ function pointerPos(canvas, ev) {
   // painting
   let painting = false;
   function paint(ev) {
+    quiet = 0;
     const p = pointerPos(cv, ev);
     const gx = (p.x / cv.width * W) | 0, gy = (p.y / cv.height * H) | 0;
     for (let y = -3; y <= 3; y++) for (let x = -3; x <= 3; x++) {
@@ -651,21 +979,40 @@ function pointerPos(canvas, ev) {
       B[yy * W + xx] = 1;
     }
   }
-  cv.addEventListener("pointerdown", e => { painting = true; paint(e); cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener("pointerdown", e => {
+    painting = true;
+    paint(e);
+    try { cv.setPointerCapture(e.pointerId); } catch (_) { /* no live pointer */ }
+  });
   cv.addEventListener("pointermove", e => { if (painting) paint(e); });
   cv.addEventListener("pointerup", () => painting = false);
   cv.addEventListener("pointercancel", () => painting = false);
 
-  document.getElementById("rd-preset").addEventListener("change", e => {
-    const [f, k] = e.target.value.split(",").map(Number);
-    feed = f; kill = k;
-  });
+  const clearThen = fn => v => { if (chipsRef) chipsRef.clear(); quiet = 0; fn(v); };
+  const setF = bindPair("rd-f", "rd-f-num", clearThen(v => feed = v));
+  const setK = bindPair("rd-k", "rd-k-num", clearThen(v => kill = v));
   document.getElementById("rd-reset").addEventListener("click", reseed);
+
+  /* Named regions of Gray-Scott parameter space (after Pearson, 1993).
+     Switching without reseeding lets the current pattern morph into the
+     new regime, which is half the fun. */
+  chipsRef = chipRow("rd-chips", [
+    { label: "coral",    apply: () => { setF(0.0545); setK(0.0620); } },
+    { label: "mitosis",  apply: () => { setF(0.0367); setK(0.0649); } },
+    { label: "worms",    apply: () => { setF(0.0780); setK(0.0610); } },
+    { label: "mazes",    apply: () => { setF(0.0290); setK(0.0570); } },
+    { label: "cheetah",  apply: () => { setF(0.0390); setK(0.0580); } },
+    { label: "chaos",    apply: () => { setF(0.0180); setK(0.0510); } },
+    { label: "drifters", apply: () => { setF(0.0140); setK(0.0540); } },
+  ]);
 
   reseed();
   loop(cv, () => {
-    for (let i = 0; i < 10; i++) step();
+    let md = 0;
+    for (let i = 0; i < 10; i++) md = step();
+    quiet = md < SETTLE_EPS ? quiet + 1 : 0;
     draw();
+    return quiet < SETTLE_FRAMES;
   });
 })();
 
@@ -674,49 +1021,63 @@ function pointerPos(canvas, ev) {
   const cv = document.getElementById("phy-canvas");
   const ctx = cv.getContext("2d");
   const W = cv.width, H = cv.height;
-  const MAXN = 900;
-  let angleDeg = 137.508, n = 0;
-
-  const slider = document.getElementById("phy-angle");
-  const label = document.getElementById("phy-angle-val");
+  let angleDeg = 137.508, maxN = 900, n = 0, dirty = true;
+  let chipsRef = null;
 
   function draw() {
     ctx.fillStyle = "#10141d";
     ctx.fillRect(0, 0, W, H);
     const cx = W / 2, cy = H / 2;
     const a = angleDeg * Math.PI / 180;
-    const c = Math.min(W, H) / 2 / Math.sqrt(MAXN) * 0.96;
+    const c = Math.min(W, H) / 2 / Math.sqrt(maxN) * 0.96;
+    const dot = Math.max(1.2, 2.1 * Math.sqrt(900 / maxN));
     for (let i = 0; i < n; i++) {
       const r = c * Math.sqrt(i);
       const th = i * a;
       const x = cx + r * Math.cos(th), y = cy + r * Math.sin(th);
-      const t = i / MAXN;
+      const t = i / maxN;
       // inner seeds warm amber -> outer seeds teal
       const cr = 232 + t * (111 - 232);
       const cg = 180 + t * (211 - 180);
       const cb = 90 + t * (199 - 90);
       ctx.fillStyle = `rgb(${cr|0},${cg|0},${cb|0})`;
       ctx.beginPath();
-      ctx.arc(x, y, 2.1 + t * 3.4, 0, Math.PI * 2);
+      ctx.arc(x, y, dot * (1 + t * 1.6), 0, Math.PI * 2);
       ctx.fill();
     }
   }
 
-  slider.addEventListener("input", () => {
-    angleDeg = +slider.value;
-    label.innerHTML = angleDeg.toFixed(3) + "&deg;";
-    n = MAXN;                      // when scrubbing, show full head instantly
+  const setAngle = bindPair("phy-angle", "phy-angle-num", v => {
+    if (chipsRef) chipsRef.clear();
+    angleDeg = v;
+    n = maxN;                      // when scrubbing, show the full head instantly
+    dirty = true;
   });
-  document.getElementById("phy-golden").addEventListener("click", () => {
-    angleDeg = 137.508; slider.value = 137.508;
-    label.innerHTML = "137.508&deg;";
-    n = 0;
+  bindPair("phy-n", "phy-n-num", v => {
+    maxN = Math.round(v);
+    n = maxN;
+    dirty = true;
   });
   document.getElementById("phy-replay").addEventListener("click", () => n = 0);
 
+  function preset(deg) {
+    setAngle(deg);   // clears chips; chipRow re-marks the clicked one
+    n = 0;           // presets replay the growth so the failure mode is visible
+  }
+  chipsRef = chipRow("phy-chips", [
+    { label: "&phi; 137.508&deg;", apply: () => preset(137.508) },
+    { label: "137.500&deg;",       apply: () => preset(137.5) },
+    { label: "137.600&deg;",       apply: () => preset(137.6) },
+    { label: "Lucas 99.502&deg;",  apply: () => preset(99.502) },
+    { label: "1/7 turn 51.429&deg;", apply: () => preset(51.429) },
+    { label: "90&deg; spokes",     apply: () => preset(90) },
+  ]);
+
   loop(cv, () => {
-    if (n < MAXN) n = Math.min(MAXN, n + 7);
+    if (n >= maxN && !dirty) return false;   // head fully grown: nothing moves
+    if (n < maxN) n = Math.min(maxN, n + Math.max(4, maxN / 128));
     draw();
+    dirty = false;
   });
 })();
 
@@ -725,19 +1086,27 @@ function pointerPos(canvas, ev) {
   const cv = document.getElementById("dp-canvas");
   const ctx = cv.getContext("2d");
   const W = cv.width, H = cv.height;
-  const G = 9.81, L1 = 1, L2 = 1, M1 = 1, M2 = 1;
+  const L1 = 1, L2 = 1, M1 = 1, M2 = 1;
   const SCALE = 110, OX = W / 2, OY = H * 0.36;
   const divEl = document.getElementById("dp-div");
   const trailsBox = document.getElementById("dp-trails");
+  const deltaBox = document.getElementById("dp-delta");
+  let g = 9.8;
 
-  // state: [th1, w1, th2, w2]
+  // state: [th1, w1, th2, w2]; scenario() yields release angles in radians
   let pA, pB, trailA, trailB;
+  const randomScenario = () => {
+    const t1 = Math.PI * (0.55 + Math.random() * 0.4);
+    return [t1, t1 + Math.PI * (Math.random() - 0.5)];
+  };
+  let scenario = randomScenario;
 
   function drop() {
-    const th = Math.PI * (0.55 + Math.random() * 0.4);   // high release
-    const th2 = Math.PI * (Math.random() - 0.5);
-    pA = [th, 0, th + th2, 0];
-    pB = [th + 0.0001 * Math.PI / 180, 0, th + th2, 0];  // 0.0001° apart
+    const [t1, t2] = scenario();
+    let d = +deltaBox.value;
+    if (!isFinite(d) || d < 0) { d = 0.0001; deltaBox.value = d; }
+    pA = [t1, 0, t2, 0];
+    pB = [t1 + d * Math.PI / 180, 0, t2, 0];
     trailA = []; trailB = [];
     ctx.fillStyle = "#10141d"; ctx.fillRect(0, 0, W, H);
   }
@@ -747,12 +1116,12 @@ function pointerPos(canvas, ev) {
     const d = t1 - t2;
     const cd = Math.cos(d), sd = Math.sin(d);
     const den = 2 * M1 + M2 - M2 * Math.cos(2 * d);
-    const a1 = (-G * (2 * M1 + M2) * Math.sin(t1)
-                - M2 * G * Math.sin(t1 - 2 * t2)
+    const a1 = (-g * (2 * M1 + M2) * Math.sin(t1)
+                - M2 * g * Math.sin(t1 - 2 * t2)
                 - 2 * sd * M2 * (w2 * w2 * L2 + w1 * w1 * L1 * cd))
                / (L1 * den);
     const a2 = (2 * sd * (w1 * w1 * L1 * (M1 + M2)
-                + G * (M1 + M2) * Math.cos(t1)
+                + g * (M1 + M2) * Math.cos(t1)
                 + w2 * w2 * L2 * M2 * cd))
                / (L2 * den);
     return [w1, a1, w2, a2];
@@ -801,6 +1170,17 @@ function pointerPos(canvas, ev) {
   drop();
   document.getElementById("dp-drop").addEventListener("click", drop);
   cv.addEventListener("pointerdown", drop);
+  deltaBox.addEventListener("change", drop);
+  bindPair("dp-g", "dp-g-num", v => g = v);
+
+  const deg = d => d * Math.PI / 180;
+  chipRow("dp-chips", [
+    { label: "random drop",  apply: () => { scenario = randomScenario; drop(); } },
+    { label: "high drop",    apply: () => { scenario = () => [deg(150), deg(120)]; drop(); } },
+    { label: "over the top", apply: () => { scenario = () => [deg(179), deg(0)]; drop(); } },
+    { label: "windmill",     apply: () => { scenario = () => [deg(170), deg(-100)]; drop(); } },
+    { label: "gentle &middot; tame", apply: () => { scenario = () => [deg(18), deg(28)]; drop(); } },
+  ]);
 
   loop(cv, () => {
     const dt = 0.004;
@@ -824,6 +1204,245 @@ function pointerPos(canvas, ev) {
     let dv = Math.abs(pA[0] - pB[0]) % (2 * Math.PI);
     if (dv > Math.PI) dv = 2 * Math.PI - dv;
     divEl.textContent = dv.toFixed(4);
+  });
+})();
+
+/* ============ VI. Abelian sandpile ============ */
+(() => {
+  const cv = document.getElementById("sp-canvas");
+  const ctx = cv.getContext("2d");
+  const CELL = 5, W = cv.width / CELL, H = cv.height / CELL;
+  const off = document.createElement("canvas");
+  off.width = W; off.height = H;
+  const octx = off.getContext("2d");
+  const img = octx.createImageData(W, H);
+
+  let grid = new Int32Array(W * H);
+  let next = new Int32Array(W * H);
+  let mode = "drip", rate = 3;
+  const CX = (H >> 1) * W + (W >> 1);
+
+  // grain-count palette: 0,1,2,3 grains; 4+ is a cell caught mid-topple
+  const PAL = [
+    [16, 20, 29], [53, 64, 107], [47, 131, 120], [232, 180, 90], [224, 122, 139]
+  ];
+
+  function addGrains() {
+    if (mode === "drip") {
+      for (let i = 0; i < rate; i++) grid[CX]++;
+    } else if (mode === "rain") {
+      for (let i = 0; i < rate; i++) {
+        grid[((Math.random() * H) | 0) * W + ((Math.random() * W) | 0)]++;
+      }
+    }
+    return mode !== "still" && rate > 0;
+  }
+
+  /* One parallel toppling sweep (BTW rule). The abelian property makes the
+     settled result independent of update order, so sweeping is safe. */
+  function sweep() {
+    let any = false;
+    next.set(grid);
+    for (let y = 0; y < H; y++) {
+      const y0 = y * W;
+      for (let x = 0; x < W; x++) {
+        const i = y0 + x;
+        if (grid[i] >= 4) {
+          any = true;
+          next[i] -= 4;
+          if (x > 0) next[i - 1]++;
+          if (x < W - 1) next[i + 1]++;
+          if (y > 0) next[i - W]++;
+          if (y < H - 1) next[i + W]++;
+        }
+      }
+    }
+    [grid, next] = [next, grid];
+    return any;
+  }
+
+  function draw() {
+    const d = img.data;
+    for (let i = 0; i < W * H; i++) {
+      const c = PAL[Math.min(4, grid[i])];
+      const j = i * 4;
+      d[j] = c[0]; d[j + 1] = c[1]; d[j + 2] = c[2]; d[j + 3] = 255;
+    }
+    octx.putImageData(img, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(off, 0, 0, cv.width, cv.height);
+  }
+
+  let dirty = true;
+  bindPair("sp-rate", "sp-rate-num", v => { rate = Math.round(v); dirty = true; });
+  document.getElementById("sp-reset").addEventListener("click", () => { grid.fill(0); dirty = true; });
+  cv.addEventListener("pointerdown", e => {
+    const p = pointerPos(cv, e);
+    const gx = Math.min(W - 1, Math.max(0, (p.x / CELL) | 0));
+    const gy = Math.min(H - 1, Math.max(0, (p.y / CELL) | 0));
+    grid[gy * W + gx] += 500;
+    dirty = true;
+  });
+
+  chipRow("sp-chips", [
+    { label: "steady drip", apply: () => { mode = "drip"; dirty = true; } },
+    { label: "rain",        apply: () => { mode = "rain"; dirty = true; } },
+    { label: "one big pile", apply: () => {
+        mode = "still"; grid.fill(0); grid[CX] = 12000; dirty = true;
+      } },
+  ]);
+
+  loop(cv, () => {
+    const added = addGrains();
+    let toppled = false;
+    for (let s = 0; s < 24; s++) { if (!sweep()) break; toppled = true; }
+    if (!added && !toppled && !dirty) return false;   // every cell below 4: settled
+    draw();
+    dirty = false;
+  });
+})();
+
+/* ============ VII. L-system plants ============ */
+(() => {
+  const cv = document.getElementById("ls-canvas");
+  const ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height;
+  const MAXLEN = 260000;           // cap the expanded word, not the browser
+
+  /* Classic species from The Algorithmic Beauty of Plants. */
+  const SPECIES = {
+    fern:    { axiom: "X", rules: { X: "F+[[X]-X]-F[-FX]+X", F: "FF" }, angle: 25,   depth: 6 },
+    sprig:   { axiom: "F", rules: { F: "F[+F]F[-F]F" },                 angle: 25.7, depth: 5 },
+    bush:    { axiom: "F", rules: { F: "FF-[-F+F+F]+[+F-F-F]" },        angle: 22.5, depth: 4 },
+    weed:    { axiom: "F", rules: { F: "F[+F]F[-F][F]" },               angle: 20,   depth: 5 },
+    seaweed: { axiom: "X", rules: { X: "F[+X][-X]FX", F: "FF" },        angle: 25.7, depth: 6 },
+  };
+
+  let word = "", angle = 25, grown = 0, total = 0, dirty = true;
+  let fit = { s: 4, x: W / 2, y: H };   // scale + origin from the measure pass
+  let chipsRef = null;
+
+  const ruleEl = document.getElementById("ls-rule");
+  const swayBox = document.getElementById("ls-sway");
+
+  function showRule(sp) {
+    const rules = Object.entries(sp.rules).map(([k, v]) => `${k}→${v}`).join("  ");
+    ruleEl.textContent = `${sp.axiom}  ${rules}  ${angle}°`;
+  }
+
+  function expand(sp, depth) {
+    let w = sp.axiom;
+    for (let i = 0; i < depth; i++) {
+      let out = "";
+      for (const ch of w) out += sp.rules[ch] || ch;
+      if (out.length > MAXLEN) break;
+      w = out;
+    }
+    return w;
+  }
+
+  /* Walk the word with a turtle. draw=null measures the bounding box;
+     otherwise renders up to `limit` segments with breeze applied. */
+  function turtle(limit, wind) {
+    const rad = angle * Math.PI / 180;
+    let x = 0, y = 0, a = -Math.PI / 2, depth = 0, seg = 0;
+    const stack = [];
+    let minX = 0, maxX = 0, minY = 0, maxY = 0;
+    const drawing = limit >= 0;
+    if (drawing) ctx.beginPath();
+    let lastStyle = "";
+    for (const ch of word) {
+      if (ch === "F") {
+        if (drawing && seg >= limit) break;
+        const w = wind ? Math.sin(wind + depth * 0.6 + seg * 0.0002) * 0.035 : 0;
+        const nx = x + Math.cos(a + w), ny = y + Math.sin(a + w);
+        if (drawing) {
+          // trunk fades to leaf-teal with bracket depth; batch by style
+          const t = Math.min(1, depth / 6);
+          const style = `rgba(${(185 + t * (111 - 185)) | 0},${(141 + t * (211 - 141)) | 0},${(79 + t * (199 - 79)) | 0},0.9)|${Math.max(0.7, 2.6 - depth * 0.35)}`;
+          if (style !== lastStyle) {
+            ctx.stroke();
+            ctx.beginPath();
+            const [col, lw] = style.split("|");
+            ctx.strokeStyle = col;
+            ctx.lineWidth = Math.min(4.5, Math.max(0.6, +lw * fit.s * 0.5));
+            lastStyle = style;
+          }
+          ctx.moveTo(fit.x + x * fit.s, fit.y + y * fit.s);
+          ctx.lineTo(fit.x + nx * fit.s, fit.y + ny * fit.s);
+        }
+        x = nx; y = ny; seg++;
+        if (x < minX) minX = x; if (x > maxX) maxX = x;
+        if (y < minY) minY = y; if (y > maxY) maxY = y;
+      }
+      else if (ch === "+") a += rad;
+      else if (ch === "-") a -= rad;
+      else if (ch === "[") { stack.push([x, y, a]); depth++; }
+      else if (ch === "]") { [x, y, a] = stack.pop(); depth--; }
+    }
+    if (drawing) ctx.stroke();
+    return { minX, maxX, minY, maxY, seg };
+  }
+
+  function rebuild(sp, depth) {
+    word = expand(sp, depth);
+    const m = turtle(-1, 0);       // measure pass
+    total = m.seg;
+    const spanX = Math.max(1e-6, m.maxX - m.minX);
+    const spanY = Math.max(1e-6, m.maxY - m.minY);
+    const s = Math.min((W * 0.86) / spanX, (H * 0.86) / spanY);
+    fit = {
+      s,
+      x: W / 2 - (m.minX + spanX / 2) * s,
+      y: H / 2 - (m.minY + spanY / 2) * s
+    };
+    grown = 0;
+  }
+
+  let sp = SPECIES.fern, depth = 6;
+  const setDepth = bindPair("ls-depth", "ls-depth-num", v => {
+    if (chipsRef) chipsRef.clear();
+    depth = Math.round(v);
+    rebuild(sp, depth);
+    grown = total;                 // adjustments show the finished plant
+    dirty = true;
+  });
+  const setAngle = bindPair("ls-angle", "ls-angle-num", v => {
+    if (chipsRef) chipsRef.clear();
+    angle = v;
+    grown = total;
+    dirty = true;
+    showRule(sp);
+  });
+  document.getElementById("ls-regrow").addEventListener("click", () => grown = 0);
+  // turning the breeze off redraws once in the neutral pose before settling
+  swayBox.addEventListener("change", () => dirty = true);
+
+  function preset(name) {
+    sp = SPECIES[name];
+    setAngle(sp.angle); setDepth(sp.depth);   // syncs inputs, rebuilds
+    grown = 0;                                // presets grow from the seed
+    showRule(sp);
+  }
+
+  chipsRef = chipRow("ls-chips", [
+    { label: "fern",    apply: () => preset("fern") },
+    { label: "sprig",   apply: () => preset("sprig") },
+    { label: "bush",    apply: () => preset("bush") },
+    { label: "weed",    apply: () => preset("weed") },
+    { label: "seaweed", apply: () => preset("seaweed") },
+  ]);
+  // start on the fern via its chip so it is marked active
+  document.querySelector("#ls-chips .chip").click();
+
+  loop(cv, t => {
+    const growing = grown < total;
+    if (!growing && !swayBox.checked && !dirty) return false;   // still air, full grown
+    if (growing) grown = Math.min(total, grown + Math.max(20, total / 140));
+    ctx.fillStyle = "#10141d";
+    ctx.fillRect(0, 0, W, H);
+    turtle(grown, swayBox.checked ? t / 1400 : 0);
+    dirty = false;
   });
 })();
 </script>
