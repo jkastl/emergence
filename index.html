@@ -293,6 +293,8 @@
       <a href="#chemistry"><span class="n">III</span>The Chemistry</a>
       <a href="#sunflower"><span class="n">IV</span>The Sunflower</a>
       <a href="#pendulum"><span class="n">V</span>The Pendulum</a>
+      <a href="#sandpile"><span class="n">VI</span>The Sandpile</a>
+      <a href="#tree"><span class="n">VII</span>The Tree</a>
     </nav>
   </div>
 </header>
@@ -476,6 +478,81 @@
         <label>gravity <input type="range" id="dp-g" min="2" max="25" step="0.1" value="9.8"> <input type="number" id="dp-g-num" min="0.5" max="50" step="0.1" value="9.8" aria-label="gravity"></label>
         <label style="user-select:none"><input type="checkbox" id="dp-trails" checked> trails</label>
         <span class="hint">divergence <span class="val" id="dp-div">0.0000</span> rad</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ VI. ABELIAN SANDPILE ============ -->
+<section class="exhibit" id="sandpile">
+  <div class="wrap">
+    <div class="ex-head"><span class="ex-num">VI.</span><h2>The Sandpile</h2></div>
+    <div class="ex-sub">criticality organizes itself &middot; Bak, Tang &amp; Wiesenfeld, 1987</div>
+    <div class="prose">
+      <p>
+        Drop grains of sand one at a time onto a grid. A cell holding four
+        grains <strong>topples</strong>, giving one grain to each of its four neighbors.
+        A neighbor pushed to four topples in turn, and so on until everything
+        settles: sometimes after one topple, sometimes after thousands. Grains
+        that fall off the edge are gone. That is the entire model.
+      </p>
+      <p>
+        Left alone, the pile tunes itself to the edge of stability, where the
+        next single grain can do almost nothing or almost anything, and
+        avalanche sizes follow a power law, the same statistical signature as
+        earthquakes and forest fires. The physicists who found this called it
+        self-organized criticality; nobody steers the pile there, falling sand
+        is enough. The colors count grains (0, 1, 2, 3), toppling cells flash
+        rose, and the mandala that forms under a steady central drip is stored
+        nowhere. Tap the canvas to pour sand wherever you like.
+      </p>
+    </div>
+    <div class="stage">
+      <canvas id="sp-canvas" width="880" height="520"></canvas>
+      <div class="chips" id="sp-chips"></div>
+      <div class="controls">
+        <label>grains/tick <input type="range" id="sp-rate" min="0" max="50" value="3" step="1"> <input type="number" id="sp-rate-num" min="0" max="200" step="1" value="3" aria-label="grains added per tick"></label>
+        <button id="sp-reset">clear table</button>
+        <span class="hint">tap to pour 500 grains</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ VII. L-SYSTEM PLANTS ============ -->
+<section class="exhibit" id="tree">
+  <div class="wrap">
+    <div class="ex-head"><span class="ex-num">VII.</span><h2>The Tree</h2></div>
+    <div class="ex-sub">a grammar that grows &middot; Lindenmayer, 1968</div>
+    <div class="prose">
+      <p>
+        The botanist Aristid Lindenmayer wrote grammars for how plants grow:
+        start from a short word and apply the same substitution to every
+        letter, generation after generation. A turtle then reads the final
+        word as instructions, drawing a segment for <span class="rule-tag">F</span>,
+        turning for <span class="rule-tag">+</span> and <span class="rule-tag">&minus;</span>,
+        and using <span class="rule-tag">[</span> and <span class="rule-tag">]</span>
+        to remember and return to a branching point. The full rule for each
+        plant below is printed under its canvas, and each is one line long.
+      </p>
+      <p>
+        Nothing in that line says fern. The overall shape, the taper, the way
+        fronds curl, all of it is the rewriting rule echoing through six
+        generations of itself. Change the turning angle by a few degrees and
+        you get a different species, which is roughly what mutations do to
+        real developmental programs. This last exhibit is the closest to an
+        actual organism: a plant is a program that runs on sunlight.
+      </p>
+    </div>
+    <div class="stage">
+      <canvas id="ls-canvas" width="880" height="560"></canvas>
+      <div class="chips" id="ls-chips"></div>
+      <div class="controls">
+        <label>generations <input type="range" id="ls-depth" min="1" max="7" value="6" step="1"> <input type="number" id="ls-depth-num" min="1" max="7" step="1" value="6" aria-label="rewriting generations"></label>
+        <label>angle&deg; <input type="range" id="ls-angle" min="5" max="45" value="25" step="0.1"> <input type="number" id="ls-angle-num" min="0" max="90" step="0.1" value="25" aria-label="turning angle in degrees"></label>
+        <label style="user-select:none"><input type="checkbox" id="ls-sway" checked> breeze</label>
+        <button id="ls-regrow">regrow</button>
+        <span class="hint" id="ls-rule"></span>
       </div>
     </div>
   </div>
@@ -1087,6 +1164,232 @@ function chipRow(id, items) {
     let dv = Math.abs(pA[0] - pB[0]) % (2 * Math.PI);
     if (dv > Math.PI) dv = 2 * Math.PI - dv;
     divEl.textContent = dv.toFixed(4);
+  });
+})();
+
+/* ============ VI. Abelian sandpile ============ */
+(() => {
+  const cv = document.getElementById("sp-canvas");
+  const ctx = cv.getContext("2d");
+  const CELL = 5, W = cv.width / CELL, H = cv.height / CELL;
+  const off = document.createElement("canvas");
+  off.width = W; off.height = H;
+  const octx = off.getContext("2d");
+  const img = octx.createImageData(W, H);
+
+  let grid = new Int32Array(W * H);
+  let next = new Int32Array(W * H);
+  let mode = "drip", rate = 3;
+  const CX = (H >> 1) * W + (W >> 1);
+
+  // grain-count palette: 0,1,2,3 grains; 4+ is a cell caught mid-topple
+  const PAL = [
+    [16, 20, 29], [53, 64, 107], [47, 131, 120], [232, 180, 90], [224, 122, 139]
+  ];
+
+  function addGrains() {
+    if (mode === "drip") {
+      for (let i = 0; i < rate; i++) grid[CX]++;
+    } else if (mode === "rain") {
+      for (let i = 0; i < rate; i++) {
+        grid[((Math.random() * H) | 0) * W + ((Math.random() * W) | 0)]++;
+      }
+    }
+  }
+
+  /* One parallel toppling sweep (BTW rule). The abelian property makes the
+     settled result independent of update order, so sweeping is safe. */
+  function sweep() {
+    let any = false;
+    next.set(grid);
+    for (let y = 0; y < H; y++) {
+      const y0 = y * W;
+      for (let x = 0; x < W; x++) {
+        const i = y0 + x;
+        if (grid[i] >= 4) {
+          any = true;
+          next[i] -= 4;
+          if (x > 0) next[i - 1]++;
+          if (x < W - 1) next[i + 1]++;
+          if (y > 0) next[i - W]++;
+          if (y < H - 1) next[i + W]++;
+        }
+      }
+    }
+    [grid, next] = [next, grid];
+    return any;
+  }
+
+  function draw() {
+    const d = img.data;
+    for (let i = 0; i < W * H; i++) {
+      const c = PAL[Math.min(4, grid[i])];
+      const j = i * 4;
+      d[j] = c[0]; d[j + 1] = c[1]; d[j + 2] = c[2]; d[j + 3] = 255;
+    }
+    octx.putImageData(img, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(off, 0, 0, cv.width, cv.height);
+  }
+
+  bindPair("sp-rate", "sp-rate-num", v => rate = Math.round(v));
+  document.getElementById("sp-reset").addEventListener("click", () => grid.fill(0));
+  cv.addEventListener("pointerdown", e => {
+    const p = pointerPos(cv, e);
+    const gx = Math.min(W - 1, Math.max(0, (p.x / CELL) | 0));
+    const gy = Math.min(H - 1, Math.max(0, (p.y / CELL) | 0));
+    grid[gy * W + gx] += 500;
+  });
+
+  chipRow("sp-chips", [
+    { label: "steady drip", apply: () => { mode = "drip"; } },
+    { label: "rain",        apply: () => { mode = "rain"; } },
+    { label: "one big pile", apply: () => {
+        mode = "still"; grid.fill(0); grid[CX] = 12000;
+      } },
+  ]);
+
+  loop(cv, () => {
+    addGrains();
+    for (let s = 0; s < 24; s++) { if (!sweep()) break; }
+    draw();
+  });
+})();
+
+/* ============ VII. L-system plants ============ */
+(() => {
+  const cv = document.getElementById("ls-canvas");
+  const ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height;
+  const MAXLEN = 260000;           // cap the expanded word, not the browser
+
+  /* Classic species from The Algorithmic Beauty of Plants. */
+  const SPECIES = {
+    fern:    { axiom: "X", rules: { X: "F+[[X]-X]-F[-FX]+X", F: "FF" }, angle: 25,   depth: 6 },
+    sprig:   { axiom: "F", rules: { F: "F[+F]F[-F]F" },                 angle: 25.7, depth: 5 },
+    bush:    { axiom: "F", rules: { F: "FF-[-F+F+F]+[+F-F-F]" },        angle: 22.5, depth: 4 },
+    weed:    { axiom: "F", rules: { F: "F[+F]F[-F][F]" },               angle: 20,   depth: 5 },
+    seaweed: { axiom: "X", rules: { X: "F[+X][-X]FX", F: "FF" },        angle: 25.7, depth: 6 },
+  };
+
+  let word = "", angle = 25, grown = 0, total = 0;
+  let fit = { s: 4, x: W / 2, y: H };   // scale + origin from the measure pass
+  let chipsRef = null;
+
+  const ruleEl = document.getElementById("ls-rule");
+  const swayBox = document.getElementById("ls-sway");
+
+  function showRule(sp) {
+    const rules = Object.entries(sp.rules).map(([k, v]) => `${k}→${v}`).join("  ");
+    ruleEl.textContent = `${sp.axiom}  ${rules}  ${angle}°`;
+  }
+
+  function expand(sp, depth) {
+    let w = sp.axiom;
+    for (let i = 0; i < depth; i++) {
+      let out = "";
+      for (const ch of w) out += sp.rules[ch] || ch;
+      if (out.length > MAXLEN) break;
+      w = out;
+    }
+    return w;
+  }
+
+  /* Walk the word with a turtle. draw=null measures the bounding box;
+     otherwise renders up to `limit` segments with breeze applied. */
+  function turtle(limit, wind) {
+    const rad = angle * Math.PI / 180;
+    let x = 0, y = 0, a = -Math.PI / 2, depth = 0, seg = 0;
+    const stack = [];
+    let minX = 0, maxX = 0, minY = 0, maxY = 0;
+    const drawing = limit >= 0;
+    if (drawing) ctx.beginPath();
+    let lastStyle = "";
+    for (const ch of word) {
+      if (ch === "F") {
+        if (drawing && seg >= limit) break;
+        const w = wind ? Math.sin(wind + depth * 0.6 + seg * 0.0002) * 0.035 : 0;
+        const nx = x + Math.cos(a + w), ny = y + Math.sin(a + w);
+        if (drawing) {
+          // trunk fades to leaf-teal with bracket depth; batch by style
+          const t = Math.min(1, depth / 6);
+          const style = `rgba(${(185 + t * (111 - 185)) | 0},${(141 + t * (211 - 141)) | 0},${(79 + t * (199 - 79)) | 0},0.9)|${Math.max(0.7, 2.6 - depth * 0.35)}`;
+          if (style !== lastStyle) {
+            ctx.stroke();
+            ctx.beginPath();
+            const [col, lw] = style.split("|");
+            ctx.strokeStyle = col;
+            ctx.lineWidth = Math.min(4.5, Math.max(0.6, +lw * fit.s * 0.5));
+            lastStyle = style;
+          }
+          ctx.moveTo(fit.x + x * fit.s, fit.y + y * fit.s);
+          ctx.lineTo(fit.x + nx * fit.s, fit.y + ny * fit.s);
+        }
+        x = nx; y = ny; seg++;
+        if (x < minX) minX = x; if (x > maxX) maxX = x;
+        if (y < minY) minY = y; if (y > maxY) maxY = y;
+      }
+      else if (ch === "+") a += rad;
+      else if (ch === "-") a -= rad;
+      else if (ch === "[") { stack.push([x, y, a]); depth++; }
+      else if (ch === "]") { [x, y, a] = stack.pop(); depth--; }
+    }
+    if (drawing) ctx.stroke();
+    return { minX, maxX, minY, maxY, seg };
+  }
+
+  function rebuild(sp, depth) {
+    word = expand(sp, depth);
+    const m = turtle(-1, 0);       // measure pass
+    total = m.seg;
+    const spanX = Math.max(1e-6, m.maxX - m.minX);
+    const spanY = Math.max(1e-6, m.maxY - m.minY);
+    const s = Math.min((W * 0.86) / spanX, (H * 0.86) / spanY);
+    fit = {
+      s,
+      x: W / 2 - (m.minX + spanX / 2) * s,
+      y: H / 2 - (m.minY + spanY / 2) * s
+    };
+    grown = 0;
+  }
+
+  let sp = SPECIES.fern, depth = 6;
+  const setDepth = bindPair("ls-depth", "ls-depth-num", v => {
+    if (chipsRef) chipsRef.clear();
+    depth = Math.round(v);
+    rebuild(sp, depth);
+    grown = total;                 // adjustments show the finished plant
+  });
+  const setAngle = bindPair("ls-angle", "ls-angle-num", v => {
+    if (chipsRef) chipsRef.clear();
+    angle = v;
+    grown = total;
+    showRule(sp);
+  });
+  document.getElementById("ls-regrow").addEventListener("click", () => grown = 0);
+
+  function preset(name) {
+    sp = SPECIES[name];
+    setAngle(sp.angle); setDepth(sp.depth);   // syncs inputs, rebuilds
+    grown = 0;                                // presets grow from the seed
+    showRule(sp);
+  }
+
+  chipsRef = chipRow("ls-chips", [
+    { label: "fern",    apply: () => preset("fern") },
+    { label: "sprig",   apply: () => preset("sprig") },
+    { label: "bush",    apply: () => preset("bush") },
+    { label: "weed",    apply: () => preset("weed") },
+    { label: "seaweed", apply: () => preset("seaweed") },
+  ]);
+  // start on the fern via its chip so it is marked active
+  document.querySelector("#ls-chips .chip").click();
+
+  loop(cv, t => {
+    if (grown < total) grown = Math.min(total, grown + Math.max(20, total / 140));
+    ctx.fillStyle = "#10141d";
+    ctx.fillRect(0, 0, W, H);
+    turtle(grown, swayBox.checked ? t / 1400 : 0);
   });
 })();
 </script>
